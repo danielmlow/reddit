@@ -121,7 +121,6 @@ def parameters_all_models(y, dim_reduction):
 			{
 				'clf__estimator': [SGDClassifier(early_stopping=True, max_iter=5000),], # SVM if hinge loss / logreg if log loss
 				'normalization': (normalization_both),
-				'umap__n_components': k,
 				'feature_selection__k': k,
 				'clf__estimator__penalty': ('l2', 'elasticnet', 'l1'),
 				'clf__estimator__loss': ['hinge','log'],
@@ -131,7 +130,6 @@ def parameters_all_models(y, dim_reduction):
 				'normalization': (normalization_both),
 				'clf__estimator__C': (0.01,0.1,1, 10,100),
 				'clf__estimator__kernel': ('rbf',),
-				'umap__n_components': k,
 				'feature_selection__k': k,
 			},
 			{
@@ -140,7 +138,6 @@ def parameters_all_models(y, dim_reduction):
 				'clf__estimator__n_estimators': (32, 128),
 				'clf__estimator__max_depth': (32, 64, None),
 				'clf__estimator__learning_rate': (0.01, 0.1),
-				'umap__n_components': k,
 				'feature_selection__k': k,
 			},
 			{
@@ -148,7 +145,6 @@ def parameters_all_models(y, dim_reduction):
 				'normalization': normalization_std,
 				'clf__estimator__n_estimators': (32,128),
 				'clf__estimator__max_depth':(32, 64, None),
-				'umap__n_components': k,
 				'feature_selection__k': k,
 			},
 			{
@@ -159,7 +155,6 @@ def parameters_all_models(y, dim_reduction):
 			'clf__estimator__activation': ['relu'],
 			'clf__estimator__alpha': [0.0001, 0.05],
 			'clf__estimator__solver': ['adam'],
-			'umap__n_components': k,
 			'feature_selection__k': k,
 			},
 
