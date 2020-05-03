@@ -5,7 +5,7 @@
 #SBATCH --time=36:00:00
 #SBATCH -N 1
 #SBATCH -c 12
-#SBATCH --mem=5GB
+#SBATCH --mem=20GB
 #SBATCH -o ./../../datum/reddit/output/slurm/slurm-%A_%a.out
 
 echo "now processing task id:: " ${SLURM_ARRAY_TASK_ID}

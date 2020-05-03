@@ -38,39 +38,41 @@ def str2boolean(s):
 		s_new = True
 	return s_new
 
-try:
-	# this will replace above if defined in command line
-	# if len(sys.argv) < 2:
-	#     print("You haven't specified any arguments. Use -h to get more details on how to use this command.")
-	#     sys.exit(1)
+# try:
+# this will replace above if defined in command line
+# if len(sys.argv) < 2:
+#     print("You haven't specified any arguments. Use -h to get more details on how to use this command.")
+#     sys.exit(1)
 
-	parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
+parser.add_argument('--job_array_task_id',
+                    help='default: ${SLURM_ARRAY_TASK_ID} or 1. When using job arrays, this will be set by the bash script by ${SLURM_ARRAY_TASK_ID} or set to 1, which will be substracted below by 1 for zero indexing')
+# parser.add_argument('--job_array_start',
+#                     help='default: 0. job arrays have a limit of 999 tasks. If you want to run 1200 tasks, first run array=1-999 and use 0 here, then to start 1000, change here to 1000, and array=1-200')
+parser.add_argument('--toy', help='run quickly with less labels, parameters and splits')
+parser.add_argument('--run_version_number',
+                    help='default: 0. if you need to run the same model but output to a different directory, change number')
+# parser.add_argument('--modality', help='audio or text or audio_text')
+# parser.add_argument('--model', help="'xgboost','extra-trees' 'svm' 'gru' 'lstm' etc")
+parser.add_argument('--dim_reduction', help="True or False")
+# parser.add_argument('--audio_features', help='text_audio_notTrimmed_compare16_freeresp')
+# parser.add_argument('--text_features',
+#                     help="['use','tfidf','sentiment', 'words', 'liwc', 'punctuation_count', 'pauses']")
+# parser.add_argument('--resampling_inner_loop', help="bootstrapping or cross_validation")
 
-	parser.add_argument('--job_array_task_id',
-	                    help='default: ${SLURM_ARRAY_TASK_ID} or 1. When using job arrays, this will be set by the bash script by ${SLURM_ARRAY_TASK_ID} or set to 1, which will be substracted below by 1 for zero indexing')
-	# parser.add_argument('--job_array_start',
-	#                     help='default: 0. job arrays have a limit of 999 tasks. If you want to run 1200 tasks, first run array=1-999 and use 0 here, then to start 1000, change here to 1000, and array=1-200')
-	parser.add_argument('--toy', help='run quickly with less labels, parameters and splits')
-	parser.add_argument('--run_version_number',
-	                    help='default: 0. if you need to run the same model but output to a different directory, change number')
-	# parser.add_argument('--modality', help='audio or text or audio_text')
-	# parser.add_argument('--model', help="'xgboost','extra-trees' 'svm' 'gru' 'lstm' etc")
-	parser.add_argument('--dim_reduction', help="True or False")
-	# parser.add_argument('--audio_features', help='text_audio_notTrimmed_compare16_freeresp')
-	# parser.add_argument('--text_features',
-	#                     help="['use','tfidf','sentiment', 'words', 'liwc', 'punctuation_count', 'pauses']")
-	# parser.add_argument('--resampling_inner_loop', help="bootstrapping or cross_validation")
+args = parser.parse_args()
+toy = str2boolean(args.toy)
+run_version_number = int(args.run_version_number)
+run_modelN = int(args.job_array_task_id) - 1
+dim_reduction = str2boolean(args.dim_reduction)
 
-	args = parser.parse_args()
-	toy = str2boolean(args.toy)
-	run_version_number = int(args.run_version_number)
-	run_modelN = int(args.job_array_task_id) - 1
+if dim_reduction:
+	dim_reduction = True
+print('args: ',args)
 
-
-
-except:
-	print('=========Parser failed======')
-	pass
+# except:
+# 	print('=========Parser failed======')
+# 	pass
 
 
 
@@ -78,12 +80,12 @@ except:
 # subreddits = ['meditation','addiction', 'adhd','anxiety', 'autism', 'bipolarreddit', 'bpd', 'depression', 'healthanxiety', 'ptsd', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 subreddits = ['meditation','mindfulness','EDAnonymous','addiction','alcoholism', 'adhd','anxiety', 'autism', 'bipolarreddit', 'bpd', 'depression', 'healthanxiety', 'ptsd', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 
-if run_version_number == 2:
+if run_version_number in [2,3]:
 	subreddits = ['alcoholism', 'bipolarreddit', 'depression', 'healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 	subsample = 5600 #for alcoholism
 
 # subreddits = ['healthanxiety', 'schizophrenia', 'socialanxiety', 'suicidewatch']
-subreddits.sort()
+# subreddits.sort()
 
 # subreddits_remove = ['mindfulness', 'meditation', 'alcoholism', 'COVID19_support'] # small ones
 # try: [subreddits.remove(n) for n in subreddits_remove]
