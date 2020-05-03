@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-#SBATCH --job-name=gs_24hs
+#SBATCH --job-name=gs_36hs
 #SBATCH --array=1-5
 #SBATCH --time=36:00:00
 #SBATCH -N 1
 #SBATCH -c 12
 #SBATCH --mem=5GB
-#SBATCH -o ./../../datum/reddit/slurm/slurm-%A_%a.out
+#SBATCH -o ./../../datum/reddit/output/slurm/slurm-%A_%a.out
 
 echo "now processing task id:: " ${SLURM_ARRAY_TASK_ID}
 
