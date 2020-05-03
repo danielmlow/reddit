@@ -66,8 +66,6 @@ run_version_number = int(args.run_version_number)
 run_modelN = int(args.job_array_task_id) - 1
 dim_reduction = str2boolean(args.dim_reduction)
 
-if dim_reduction:
-	dim_reduction = True
 print('args: ',args)
 
 # except:
@@ -83,6 +81,12 @@ subreddits = ['meditation','mindfulness','EDAnonymous','addiction','alcoholism',
 if run_version_number in [2,3]:
 	subreddits = ['alcoholism', 'bipolarreddit', 'depression', 'healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 	subsample = 5600 #for alcoholism
+
+
+if run_version_number in [4]:
+	subreddits = ['healthanxiety', 'lonely', 'socialanxiety', 'suicidewatch']
+	subsample = 11000  # for alcoholism
+
 
 # subreddits = ['healthanxiety', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 # subreddits.sort()
