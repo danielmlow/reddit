@@ -475,7 +475,7 @@ if __name__ == "__main__":
 			# Evaluate
 			report = classification_report(y_test, y_pred, output_dict=True)
 			df = pd.DataFrame(report).transpose()
-			print(df)
+
 
 			model_name = str(model_and_params.get('clf__estimator')).split('(')[0]
 			df.to_csv(output_dir+'report_{}.csv'.format(model_name),index_label=0)
@@ -503,7 +503,7 @@ if __name__ == "__main__":
 
 			results = pd.DataFrame(gscv.cv_results_)
 			print('=======================================================\n')
-			print(results)
+
 			print(gscv.best_params_)
 			print(gscv.best_score_)
 			print('=======================================================\n')
