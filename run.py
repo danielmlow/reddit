@@ -15,18 +15,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from sklearn import preprocessing
 import re
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.ensemble import ExtraTreesClassifier
+
 from sklearn.feature_selection import SelectKBest
-from xgboost.sklearn import XGBModel
-from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import SGDClassifier
+
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 import switcher
 # from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import FeatureUnion
+# from sklearn.pipeline import FeatureUnion
 # import config
 import umap
 sys.path.append('./../../catpro')
@@ -39,7 +35,7 @@ from catpro import data_helpers
 # from catpro.models import lstm
 from sklearn.model_selection import KFold
 from hetero_feature_union import FeatureExtractor, ItemSelector
-
+import parameters
 
 seed_value= 1234
 
@@ -57,161 +53,6 @@ def list_of_list_to_array(l):
 	l2 = np.array(l1)
 	print(l2.shape)
 	return l2
-
-normalization_both = (StandardScaler(), MinMaxScaler())
-normalization_std = (StandardScaler(),)
-
-def parameters_all_models(y, dim_reduction):
-	n_classes = len(np.unique(y))
-
-	if dim_reduction:
-		k = (2,)
-		parameters = [
-			{
-				'clf__estimator': [SGDClassifier(early_stopping=True, max_iter=5000), ],
-				# SVM if hinge loss / logreg if log loss
-				'normalization': (normalization_both),
-				'umap__n_components': k,
-				'clf__estimator__penalty': ('l2', 'elasticnet', 'l1'),
-				'clf__estimator__loss': ['hinge', 'log'],
-			},
-			{
-				'clf__estimator': [SVC(probability=False)],
-				'normalization': (normalization_both),
-				'clf__estimator__C': (0.01, 0.1, 1, 10, 100),
-				'clf__estimator__kernel': ('rbf',),
-				'umap__n_components': k,
-			},
-			{
-				'clf__estimator': [
-					XGBModel(objective='multi:softmax', num_class=n_classes, max_features='auto', n_jobs=-1)],
-				'normalization': normalization_std,
-				'clf__estimator__n_estimators': (32, 128),
-				'clf__estimator__max_depth': (32, 64, None),
-				'clf__estimator__learning_rate': (0.01, 0.1),
-				'umap__n_components': k,
-			},
-			{
-				'clf__estimator': [ExtraTreesClassifier(max_features='auto', n_jobs=-1)],
-				'normalization': normalization_std,
-				'clf__estimator__n_estimators': (32, 128),
-				'clf__estimator__max_depth': (32, 64, None),
-				'umap__n_components': k,
-			},
-			{
-				'clf__estimator': [MLPClassifier(early_stopping=True, max_iter=200)],
-				'normalization': normalization_std,
-				'clf__estimator__batch_size': (32, 128, 512),
-				'clf__estimator__hidden_layer_sizes': [(64, 16), (16, 16)],
-				'clf__estimator__activation': ['relu'],
-				'clf__estimator__alpha': [0.0001, 0.05],
-				'clf__estimator__solver': ['adam'],
-				'umap__n_components': k,
-			},
-
-		]
-
-	else:
-
-		k = (32, 64, 128,'all')
-
-
-
-		parameters = [
-			{
-				'clf__estimator': [SGDClassifier(early_stopping=True, max_iter=5000),], # SVM if hinge loss / logreg if log loss
-				'normalization': (normalization_both),
-				'feature_selection__k': k,
-				'clf__estimator__penalty': ('l2', 'elasticnet', 'l1'),
-				'clf__estimator__loss': ['hinge','log'],
-			},
-			{
-				'clf__estimator': [SVC(probability=False)],
-				'normalization': (normalization_both),
-				'clf__estimator__C': (0.01,0.1,1, 10,100),
-				'clf__estimator__kernel': ('rbf',),
-				'feature_selection__k': k,
-			},
-			{
-				'clf__estimator': [XGBModel(objective='multi:softmax', num_class=n_classes, max_features='auto', n_jobs=-1)],
-				'normalization': normalization_std,
-				'clf__estimator__n_estimators': (32, 128),
-				'clf__estimator__max_depth': (32, 64, None),
-				'clf__estimator__learning_rate': (0.01, 0.1),
-				'feature_selection__k': k,
-			},
-			{
-				'clf__estimator': [ExtraTreesClassifier(max_features='auto', n_jobs=-1)],
-				'normalization': normalization_std,
-				'clf__estimator__n_estimators': (32,128),
-				'clf__estimator__max_depth':(32, 64, None),
-				'feature_selection__k': k,
-			},
-			{
-			'clf__estimator': [MLPClassifier(early_stopping=True, max_iter=200)],
-			'normalization': normalization_std,
-			'clf__estimator__batch_size': (32,128,512),
-			'clf__estimator__hidden_layer_sizes': [(256,32), (64, 32)],
-			'clf__estimator__activation': ['relu'],
-			'clf__estimator__alpha': [0.0001, 0.05],
-			'clf__estimator__solver': ['adam'],
-			'feature_selection__k': k,
-			},
-
-		]
-	return parameters
-
-
-def parameters_all_models_final(y, dim_reduction):
-	if dim_reduction:
-		k=2
-	else:
-		k = 'all'
-	n_classes = len(np.unique(y))
-	parameters = [
-		{
-			# SGD, train: 0.8278
-			'clf__estimator': SGDClassifier(early_stopping=True, max_iter=5000), # SVM if hinge loss / logreg if log loss
-			'normalization': MinMaxScaler(),
-			'feature_selection__k': 'all',
-			'clf__estimator__penalty': 'l1',
-			'clf__estimator__loss': 'log',
-		},
-		{
-			'clf__estimator': [SVC(kernel='rbf', probability=False)],
-			'normalization': (normalization_both),
-			'clf__estimator__C': (0.01,0.1,1, 10,100),
-			'clf__estimator__gamma': ('scale','auto'),
-			'feature_selection__k': k,
-		},
-		{
-			'clf__estimator': [ExtraTreesClassifier(max_features='auto')],
-			'normalization': normalization_std,
-			'clf__estimator__n_estimators': (16,32,128),
-			'clf__estimator__max_depth':(32, 64, None),
-			'feature_selection__k': k,
-		},
-		{
-			'clf__estimator': [XGBModel(objective='multi:softmax',num_class=n_classes, max_features='auto')],
-			'normalization': normalization_std,
-			'clf__estimator__n_estimators': (16,32,128),
-			'clf__estimator__max_depth':(32, 64),
-			'clf__estimator__learning_rate': (0.01, 0.1, 0.3),
-			'feature_selection__k': k,
-		},
-		{
-		'clf__estimator': [MLPClassifier()],
-		'normalization': normalization_std,
-		'clf__estimator__batch_size': (128,256,512),
-		'clf__estimator__hidden_layer_sizes': [(50,50,50), (50,100,50), (100,)],
-		'clf__estimator__activation': ['relu'],
-		'clf__estimator__alpha': [0.0001, 0.05],
-		'clf__estimator__solver': ['adam'],
-		'feature_selection__k': k,
-		},
-
-	]
-	return parameters
 
 
 '''
@@ -437,9 +278,9 @@ if __name__ == "__main__":
 
 	# Run models
 	if run_final_model:
-		parameters = parameters_all_models_final(y,dim_reduction)
+		parameters = parameters.parameters_all_models_final(y,dim_reduction)
 	else:
-		parameters = parameters_all_models(y, dim_reduction=dim_reduction)
+		parameters = parameters.parameters_all_models(y, dim_reduction=dim_reduction)
 
 	# write all variables in config)
 	with open(output_dir + 'config.txt', 'a+') as f:
@@ -451,7 +292,7 @@ if __name__ == "__main__":
 	if dim_reduction:
 		pipeline = Pipeline([
 			('normalization', None),
-			('umap', umap.UMAP(n_components=2, min_dist=0.1,  metric='correlation', random_state=seed_value)),
+			('umap', umap.UMAP(n_components=2,min_dist=0.1,  metric='correlation', random_state=seed_value)),
 			('clf', switcher.ClfSwitcher()),
 		])
 
@@ -517,7 +358,8 @@ if __name__ == "__main__":
 
 			model_name= str(results.param_clf__estimator[0]).split('(')[0]
 
-			joblib.dump(gscv.best_estimator_, output_dir + '{}.pkl'.format(model_name))
+			# joblib.dump(gscv.best_estimator_, output_dir + '{}.pkl'.format(model_name))
+
 			with open(output_dir+model_name+'.txt', 'a+') as f:
 				f.write('\n=======================================================\n')
 				f.write(str(gscv.best_estimator_))
@@ -526,7 +368,7 @@ if __name__ == "__main__":
 				f.write('\n=======================================================\n')
 
 
-			joblib.dump(gscv.best_estimator_, output_dir+'{}.pkl'.format(model_name))
+			# joblib.dump(gscv.best_estimator_, output_dir+'{}.pkl'.format(model_name))
 			results.to_csv(output_dir+model_name+'.csv',index_label=0)
 
 
