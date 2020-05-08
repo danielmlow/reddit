@@ -12,7 +12,9 @@ from sklearn.ensemble import ExtraTreesClassifier
 from xgboost.sklearn import XGBModel
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import SGDClassifier
+from sklearn.feature_selection import SelectKBest
 
+from sklearn.pipeline import Pipeline
 
 normalization_both = (StandardScaler(), MinMaxScaler())
 normalization_std = (StandardScaler(),)
@@ -174,3 +176,40 @@ def parameters_all_models_final(y, dim_reduction):
 
 	]
 	return parameters
+
+
+def final_pipeline(run_modelN):
+	if run_modelN == 0:
+		k = 'all'
+		scaler = MinMaxScaler()
+		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+
+
+	elif run_modelN == 1:
+		# 	todo:
+		k = 'all'
+		scaler = MinMaxScaler()
+		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+
+	elif run_modelN == 2:
+		# 	todo:
+		k = 'all'
+		scaler = MinMaxScaler()
+		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+	elif run_modelN == 3:
+		# 	todo:
+		k = 'all'
+		scaler = MinMaxScaler()
+		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+	elif run_modelN == 4:
+		# 	todo:
+		k = 'all'
+		scaler = MinMaxScaler()
+		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+
+	pipeline = Pipeline([
+		('normalization',scaler),
+		('feature_selection', SelectKBest(k=k)),
+		('clf', clf),
+	])
+	return pipeline

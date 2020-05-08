@@ -202,3 +202,90 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 # # pipeline.fit(train.data, train.target)
 # # y = pipeline.predict(test.data)
 # # print(classification_report(y, test.target))
+
+
+
+
+
+	#
+	# pipeline = Pipeline([
+	# 	('subjectbody', FeatureExtractor()),
+	# 	(combined_features),
+	# 	('normalization', None),
+	# 	('feature_selection', SelectKBest()),
+	# 	('clf', switcher.ClfSwitcher()),
+	# ])
+
+	# ================================================================================
+
+	#
+	#
+	# 	# weight components in FeatureUnion
+	# 	transformer_weights={
+	# 		'subject': 0.8,
+	# 		'body_bow': 0.5,
+	# 		'body_stats': 1.0,
+	# 	},
+	# )),
+
+
+
+
+
+
+
+#
+#
+# pipeline = Pipeline([
+#   ('extract_essays', EssayExractor()),
+#   ('features', FeatureUnion([
+#     ('ngram_tf_idf', Pipeline([
+#       ('counts', CountVectorizer()),
+#       ('tf_idf', TfidfTransformer())
+#     ])),
+#     ('essay_length', LengthTransformer()),
+#     ('misspellings', MispellingCountTransformer())
+#   ])),
+#   ('classifier', MultinomialNB())
+# ])
+
+
+# https://scikit-learn.org/0.19/auto_examples/hetero_feature_union.html
+#
+# combined_features = ([
+#     ('tfidf', Pipeline([
+#       ('counts', CountVectorizer()),
+#       ('tf_idf', TfidfTransformer()),
+# 	('pre-extractednormalization', None)
+#     ])),
+#
+# pipeline = Pipeline([
+#
+# 	('features', combined_features),
+# 	('feature_selection', SelectKBest()),
+#     ('clf', switcher.ClfSwitcher()),
+# ])
+
+
+# Todo: fix so tfidf wont overfit on within training data
+# ================================================================================
+# X_docs_train = np.append(X_train, np.reshape(docs_train, (docs_train.shape[0], 1)), axis=1)
+# combined_features = ('union', FeatureUnion(
+# 	transformer_list=[
+# 		# Pipeline for pulling pre-extracted features "X"
+# 		('X_features', ItemSelector('X')),
+#
+# 		# Pipeline for extracting tfidf from clean "docs" (strings)
+# 		('tfidf', Pipeline([
+# 			('selector', ItemSelector('docs')),
+# 			('tfidf_vec', TfidfVectorizer(ngram_range = (1, 2), max_features = 256, min_df = 2, max_df = 0.8, stop_words='english', tokenizer = stemming_tokenizer)),
+# 							])
+# 		 ),
+# 	],
+# ))
+#
+
+
+# d = {'X': X_train, 'docs': docs_train}
+# # ItemSelector(key='docs').fit_transform(d)
+

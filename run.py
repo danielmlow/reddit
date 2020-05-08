@@ -12,9 +12,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import preprocessing
 import re
+
 
 from sklearn.feature_selection import SelectKBest
 
@@ -27,7 +28,7 @@ import switcher
 import umap
 sys.path.append('./../../catpro')
 from catpro.preprocessing_text import extract_features
-from catpro import data_helpers
+from catpro import data_helpers, plot_outputs
 # from catpro import evaluate_metrics
 
 
@@ -35,7 +36,8 @@ from catpro import data_helpers
 # from catpro.models import lstm
 from sklearn.model_selection import KFold
 from hetero_feature_union import FeatureExtractor, ItemSelector
-import parameters
+import config_parameters
+import load_reddit
 
 seed_value= 1234
 
@@ -76,34 +78,6 @@ l.sort()
 #        'suicidewatch']
 
 
-
-
-
-def subsample_df(df, subsample, overN):
-	if df.shape[0] > overN:
-		subsample_int = int(df.shape[0]*subsample)
-	df = df.loc[np.random.choice(df.index,subsample_int, replace=False)]
-	return df
-
-
-def load_reddit(input_dir, subreddits, pre_or_post = 'pre', subsample=None, subsample_subreddits_overN=None, days = (0,-1)):
-
-	# Careful: if you add COVID19_support and it does not exist in the first time step, then this will confuse metric learning
-	reddit_data = pd.read_csv(input_dir +subreddits[0]+'_{}_features.csv'.format(pre_or_post), index_col=False)
-	print('before:', subreddits[0], reddit_data.shape)
-	if subsample:
-		reddit_data = subsample_df(reddit_data, subsample, subsample_subreddits_overN)
-		print('after:', subreddits[0], reddit_data.shape)
-
-	for i in np.arange(1, len(subreddits)):
-		new_data = pd.read_csv(input_dir+subreddits[i]+'_{}_features.csv'.format(pre_or_post))
-		print('before:',subreddits[i], new_data.shape)
-		if subsample:
-			new_data = subsample_df(new_data, subsample, subsample_subreddits_overN)
-		print('after:',subreddits[i], new_data.shape)
-		reddit_data = pd.concat([reddit_data, new_data], axis=0)
-
-	return reddit_data
 
 
 
@@ -161,6 +135,132 @@ reload(config)
 # 	return words
 
 
+def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir):
+	pipeline = config_parameters.final_pipeline(run_modelN)
+	# TODO would this work model_and_params = parameters[run_modelN]
+	for i, model_and_params in enumerate(parameters):
+		if i != run_modelN:
+			continue
+
+		# pipeline.set_params(**model_and_params)
+		pipeline.fit(X_train, y_train)
+		y_pred = pipeline.predict(X_test)
+		# Evaluate
+		report = classification_report(y_test, y_pred, target_names=subreddits, output_dict=True)
+		df = pd.DataFrame(report).transpose()
+
+		model_name = str(model_and_params.get('clf__estimator')).split('(')[0]
+		df.to_csv(output_dir + 'report_{}.csv'.format(model_name), index_label=0)
+		df.to_latex(output_dir + 'report_latex_{}'.format(model_name))
+		with open(model_name + '_params.txt', 'a+') as f:
+			f.write(str(model_and_params))
+
+		# (n_classes, n_features)
+		coefs = pipeline['clf'].coef_
+		coefs_df = pd.DataFrame(coefs).T
+		# coefs_df = pd.concat([pd.DataFrame(features), pd.DataFrame(np.transpose(coefs))], axis=1)
+		if len(subreddits)<3:
+			coefs_df.columns = [subreddit]
+		else:
+			coefs_df.columns = subreddits
+		coefs_df.index = features
+		coefs_df.to_csv(output_dir + 'coefs_df_{}.csv'.format(model_name))
+
+
+
+
+		if len(subreddits)>2:
+			for sr in subreddits:
+				coef_sr = coefs_df.sort_values([sr])
+				coef_sr.to_csv(output_dir + 'coefs_df_{}_{}.csv'.format(model_name, sr))
+				with open(output_dir + 'coefs_df_{}_summary.txt'.format(model_name), 'a+') as f:
+					f.write('\n\n==========================================\n')
+					f.write('\n{} top: \n'.format(sr))
+					f.write(str(coef_sr[sr].iloc[-20:]))
+					f.write('=========\n')
+					f.write('\n{} bottom: \n'.format(sr))
+					f.write(str(coef_sr[sr].iloc[:10]))
+
+
+		y_pred_probs = pipeline.predict_proba(X_test)
+		y_pred_probs = pd.DataFrame(y_pred_probs)
+		y_pred_probs.columns = subreddits
+		y_pred_probs.to_csv(output_dir + 'y_pred_probs_{}.csv'.format(model_name), index=None)
+
+
+		cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
+
+		plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
+
+
+
+	# Features
+def csv_to_X(reddit_data):
+	features = list(reddit_data.columns)
+	features = [n for n in features if n not in ['subreddit', 'author', 'date', 'post']]
+	print('double check features: ', features)
+	# posts = np.array(reddit_data.subreddit.value_counts()).astype(int)
+	# days = np.unique(reddit_data.date)
+
+	# Build X
+	# docs =· todo for tfidf
+	docs_all = [] #for tfidf
+	X = []
+	y = []
+	subreddits = list(reddit_data.subreddit)
+	for sr in subreddits:
+		df_subreddit = reddit_data[reddit_data.subreddit==sr]
+		# if subsample:
+		# 	df_subreddit = df_subreddit.sample(n=subsample, random_state=seed_value)
+		df_subreddit_X = df_subreddit[features].values
+		df_subreddit_y = list(df_subreddit .subreddit)
+
+		docs = list(df_subreddit['post'])
+		docs = [post.replace('\n\n', ' ').replace('  ', ' ').replace('“', '').replace('”', '') for post in
+		         docs]  # here I remove paragraph split, double spaces and some other weird stuff, this should be done once for all posts\n",
+
+		X.append(df_subreddit_X)
+		y.append(df_subreddit_y)
+		docs_all.append(docs)
+
+
+	X, y, docs_all = list_of_list_to_array(X),list_of_list_to_array(y),list_of_list_to_array(docs_all)
+	le = preprocessing.LabelEncoder()
+	y_encoded = le.fit_transform(y)
+
+	# Split
+	X_train, X_test, y_train, y_test, docs_train, docs_test  = train_test_split(X, y_encoded, docs_all,test_size=0.20, random_state=seed_value)
+
+
+	# from importlib import reload
+	# reload(extract_features)
+	if 'tfidf' in config.features:
+		train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train, X_test_sentences=docs_test,
+		                                                                      ngram_range=(1, 2),
+		                                                                      max_features=256, min_df=2, max_df=0.8,
+		                                                                      model=model, stem=config.stem)
+		X_train = np.concatenate([X_train, train_tfidf], axis=1)
+		X_test = np.concatenate([X_test, test_tfidf], axis=1)
+		features = np.concatenate([features, feature_names_tfidf], axis=0)
+
+	return X_train, y_train, X_test, y_test, features
+
+def csv_to_X_midpandemic(df, timestep):
+	days = np.unique(df.date)
+	days_timestep = days[::timestep]
+	X = []
+	y = []
+	for i in range(0, len(days), timestep):
+		days_week = days[i:i + timestep]
+		df_week = df[df.date.isin(days_week)]
+		df_week_feature_cols = df_week[features].values
+		df_week_y = list(df_week.subreddit)
+		X.append(df_week_feature_cols)
+		y.append(df_week_y)
+
+	X = np.array(X)
+	y = np.array(y)
+
 if __name__ == "__main__":
 	# Config
 	import config
@@ -180,12 +280,19 @@ if __name__ == "__main__":
 	# mkdir output dir and logger
 	run_final_model = config.run_final_model
 
+
 	dim_reduction = config.dim_reduction
+	task = config.task
+	midpandemic = config.midpandemic
+	subsample_midpandemic = config.subsample_midpandemic
+
+
+	subreddit = subreddits[config.subredditN]
 
 	if run_final_model:
-		output_dir = data_helpers.make_output_dir(output_dir, name='run_final_model_v{}_model{}'.format(run_version_number, run_modelN))
+		output_dir = data_helpers.make_output_dir(output_dir, name='run_final_model_v{}_model{}_{}'.format(run_version_number, run_modelN, subreddit))
 	else:
-		output_dir = data_helpers.make_output_dir(output_dir, name='run_gridsearch_v{}_model{}'.format(run_version_number, run_modelN))
+		output_dir = data_helpers.make_output_dir(output_dir, name='run_gridsearch_v{}_model{}_{}'.format(run_version_number, run_modelN, subreddit))
 
 
 	# Load data
@@ -194,8 +301,21 @@ if __name__ == "__main__":
 		pass
 	else:
 	# 	vector models
-		reddit_data = load_reddit(input_dir+'feature_extraction/', subreddits, pre_or_post = 'pre')
+		if task == 'binary':
+			reddit_data = load_reddit.binary(input_dir + 'feature_extraction/', subreddit, subreddits,
+			                                 pre_or_post='pre', subsample=subsample)
 
+			if midpandemic:
+				mid_pandemic_data = load_reddit.binary(input_dir + 'feature_extraction/', subreddit, subreddits,
+			                                 pre_or_post='post', subsample=subsample_midpandemic)
+
+
+				X_test_midpandemic = csv_to_X_midpandemic(mid_pandemic_data)
+
+		elif task == 'multiclass':
+			reddit_data = load_reddit.multiclass(input_dir+'feature_extraction/', subreddits, pre_or_post = 'pre')
+
+	# Count
 	days = np.unique(reddit_data.date)
 	days.sort()
 	days_train = days[:]
@@ -209,78 +329,25 @@ if __name__ == "__main__":
 		sr_all.append(sr)
 		counts_all.append(np.round(float(list(counts_d)[-1]), 2))
 
-
 	# Exclude under
-	if include_subreddits_overN:
-		subreddits = [n for n,i in zip(sr_all, counts_all) if i>include_subreddits_overN ]
+	# if include_subreddits_overN:
+	# 	subreddits = [n for n,i in zip(sr_all, counts_all) if i>include_subreddits_overN ]
 
+	# for sr in subreddits:
+	# 	reddit_data = reddit_data[reddit_data.subreddit.isin(subreddits)]
 
-	for sr in subreddits:
-		reddit_data = reddit_data[reddit_data.subreddit.isin(subreddits)]
-
-
-	# Features
-
-	features = list(reddit_data.columns)
-	features = [n for n in features if n not in ['subreddit', 'author', 'date', 'post']]
-	print('double check features: ', features)
-	posts = np.array(reddit_data.subreddit.value_counts()).astype(int)
-	days = np.unique(reddit_data.date)
-
-
-
-	# Build X
-	# docs =· todo for tfidf
-	docs_all = []
-	X = []
-	y = []
-	for sr in subreddits:
-		df_subreddit = reddit_data[reddit_data.subreddit==sr]
-		if subsample:
-			df_subreddit = df_subreddit.sample(n=subsample, random_state=seed_value)
-		df_subreddit_X = df_subreddit[features].values
-		df_subreddit_y = list(df_subreddit .subreddit)
-
-		docs = list(df_subreddit['post'])
-		docs = [post.replace('\n\n', ' ').replace('  ', ' ').replace('“', '').replace('”', '') for post in
-		         docs]  # here I remove paragraph split, double spaces and some other weird stuff, this should be done once for all posts\n",
-
-
-
-		X.append(df_subreddit_X)
-		y.append(df_subreddit_y)
-		docs_all.append(docs)
-
-
-
-
-	X, y, docs_all = list_of_list_to_array(X),list_of_list_to_array(y),list_of_list_to_array(docs_all)
-	le = preprocessing.LabelEncoder()
-	y_encoded = le.fit_transform(y)
-
-	# Split
-	X_train, X_test, y_train, y_test, docs_train, docs_test  = train_test_split(X, y_encoded, docs_all,test_size=0.20, random_state=seed_value)
-
-
-	# from importlib import reload
-	# reload(extract_features)
-	train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train, X_test_sentences=docs_test,
-	                                                                      ngram_range=(1, 2),
-	                                                                      max_features=256, min_df=2, max_df=0.8,
-	                                                                      model=model)
-
-	X_train = np.concatenate([X_train, train_tfidf], axis=1)
-	X_test = np.concatenate([X_test, test_tfidf], axis=1)
-
-	# d = {'X': X_train, 'docs': docs_train}
-	# # ItemSelector(key='docs').fit_transform(d)
+	# todo here I can use all data or subsample to  min (5600)
+	X_train, y_train, X_test, y_test, features = csv_to_X(reddit_data)
 
 
 	# Run models
+	# ================================================================================
+
+	subreddits = list(np.unique(reddit_data.subreddit))
 	if run_final_model:
-		parameters = parameters.parameters_all_models_final(y,dim_reduction)
+		parameters = config_parameters.parameters_all_models_final(y_train,dim_reduction)
 	else:
-		parameters = parameters.parameters_all_models(y, dim_reduction=dim_reduction)
+		parameters = config_parameters.parameters_all_models(y_train, dim_reduction=dim_reduction)
 
 	# write all variables in config)
 	with open(output_dir + 'config.txt', 'a+') as f:
@@ -289,45 +356,34 @@ if __name__ == "__main__":
 		f.write(str(parameters))
 		f.write('\n')
 
-	if dim_reduction:
-		pipeline = Pipeline([
-			('normalization', None),
-			('umap', umap.UMAP(n_components=2,min_dist=0.1,  metric='correlation', random_state=seed_value)),
-			('clf', switcher.ClfSwitcher()),
-		])
 
 
-	else:
-		pipeline = Pipeline([
-			('normalization', None),
-			('feature_selection', SelectKBest()),
-			('clf', switcher.ClfSwitcher()),
-		])
+
 
 	if run_final_model:
-		# TODO would this work model_and_params = parameters[run_modelN]
-		for i, model_and_params in enumerate(parameters):
-			if i!= run_modelN:
-				continue
-
-			pipeline.set_params(**model_and_params)
-			pipeline.fit(X_train, y_train)
-			y_pred = pipeline.predict(X_test)
-			# Evaluate
-			report = classification_report(y_test, y_pred, output_dict=True)
-			df = pd.DataFrame(report).transpose()
-
-
-			model_name = str(model_and_params.get('clf__estimator')).split('(')[0]
-			df.to_csv(output_dir+'report_{}.csv'.format(model_name),index_label=0)
-			df.to_latex(output_dir+'report_latex_{}'.format(model_name))
-			with open(model_name+'_params.txt', 'a+') as f:
-				f.write(str(model_and_params))
-
-
+		final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir)
 
 	else:
 		# Hyperparameter tuning
+		# ========================================================================
+
+
+		if dim_reduction:
+			pipeline = Pipeline([
+				('normalization', None),
+				('umap', umap.UMAP(n_components=2, min_dist=0.1, metric='correlation', random_state=seed_value)),
+				('clf', switcher.ClfSwitcher()),
+			])
+
+
+		else:
+			pipeline = Pipeline([
+				('normalization', None),
+				('feature_selection', SelectKBest()),
+				('clf', switcher.ClfSwitcher()),
+			])
+
+
 		# models_all = []
 		# results_all = []
 		# best_params_all = []
@@ -347,7 +403,7 @@ if __name__ == "__main__":
 
 			print(gscv.best_params_)
 			print(gscv.best_score_)
-			print('=======================================================\n')
+			print('=====================\n')
 
 
 			# models_all.append(gscv)
@@ -367,91 +423,7 @@ if __name__ == "__main__":
 				f.write(str(np.round(gscv.best_score_,4)))
 				f.write('\n=======================================================\n')
 
-
-			# joblib.dump(gscv.best_estimator_, output_dir+'{}.pkl'.format(model_name))
 			results.to_csv(output_dir+model_name+'.csv',index_label=0)
 
-
-
-
-# 		#todo:
-
-
-
-	# Todo: fix so tfidf wont overfit on within training data
-	# ================================================================================
-	# X_docs_train = np.append(X_train, np.reshape(docs_train, (docs_train.shape[0], 1)), axis=1)
-	# combined_features = ('union', FeatureUnion(
-	# 	transformer_list=[
-	# 		# Pipeline for pulling pre-extracted features "X"
-	# 		('X_features', ItemSelector('X')),
-	#
-	# 		# Pipeline for extracting tfidf from clean "docs" (strings)
-	# 		('tfidf', Pipeline([
-	# 			('selector', ItemSelector('docs')),
-	# 			('tfidf_vec', TfidfVectorizer(ngram_range = (1, 2), max_features = 256, min_df = 2, max_df = 0.8, stop_words='english', tokenizer = stemming_tokenizer)),
-	# 							])
-	# 		 ),
-	# 	],
-	# ))
-	#
-	#
-	# pipeline = Pipeline([
-	# 	('subjectbody', FeatureExtractor()),
-	# 	(combined_features),
-	# 	('normalization', None),
-	# 	('feature_selection', SelectKBest()),
-	# 	('clf', switcher.ClfSwitcher()),
-	# ])
-
-	# ================================================================================
-
-	#
-	#
-	# 	# weight components in FeatureUnion
-	# 	transformer_weights={
-	# 		'subject': 0.8,
-	# 		'body_bow': 0.5,
-	# 		'body_stats': 1.0,
-	# 	},
-	# )),
-
-
-
-
-
-
-
-#
-#
-# pipeline = Pipeline([
-#   ('extract_essays', EssayExractor()),
-#   ('features', FeatureUnion([
-#     ('ngram_tf_idf', Pipeline([
-#       ('counts', CountVectorizer()),
-#       ('tf_idf', TfidfTransformer())
-#     ])),
-#     ('essay_length', LengthTransformer()),
-#     ('misspellings', MispellingCountTransformer())
-#   ])),
-#   ('classifier', MultinomialNB())
-# ])
-
-
-# https://scikit-learn.org/0.19/auto_examples/hetero_feature_union.html
-#
-# combined_features = ([
-#     ('tfidf', Pipeline([
-#       ('counts', CountVectorizer()),
-#       ('tf_idf', TfidfTransformer()),
-# 	('pre-extractednormalization', None)
-#     ])),
-#
-# pipeline = Pipeline([
-#
-# 	('features', combined_features),
-# 	('feature_selection', SelectKBest()),
-#     ('clf', switcher.ClfSwitcher()),
-# ])
 
 
