@@ -63,22 +63,24 @@ def binary(input_dir, subreddit, control_subreddits, pre_or_post = 'pre', subsam
 		reddit_data_sr = subsample_df(reddit_data_sr , subsample)
 
 		# Exclude certain the same or overlapping subreddits from control group
-		if subreddit == 'healthanxiety':
-			exclude = ['healthanxiety','anxiety']
-		elif subreddit == 'socialanxiety':
-			exclude = ['socialanxiety', 'anxiety']
-		elif subreddit == 'anxiety':
-			exclude = ['anxiety','healthanxiety','socialanxiety']
-		elif subreddit == 'depression':
-			exclude = ['depression','suicidewatch']
-		elif subreddit == 'suicidewatch':
-			exclude = ['suicidewatch','depression']
+		# if subreddit == 'healthanxiety':
+		# 	exclude = ['healthanxiety','anxiety']
+		# elif subreddit == 'socialanxiety':
+		# 	exclude = ['socialanxiety', 'anxiety']
+		# elif subreddit == 'anxiety':
+		# 	exclude = ['anxiety','healthanxiety','socialanxiety']
+		# elif subreddit == 'depression':
+		# 	exclude = ['depression','suicidewatch']
+		# elif subreddit == 'suicidewatch':
+		# 	exclude = ['suicidewatch','depression']
+		# else:
+		exclude = [subreddit]  # socialanxiety 0.11
+		# 	Dont do these:
 		# elif subreddit == 'bipolarreddit':
 		# 	exclude = ['bipolarreddit'] #schizophrenia 0.14, healthanxiety 0.08
 		# elif subreddit == 'schizophrenia':
 		# 	exclude = ['schizophrenia'] #bipolar 0.16, healthanxiety 0.10
-		else:
-			exclude = [subreddit] #socialanxiety 0.11
+
 
 
 		# create control df: remove the treatment and overlapping subreddits
