@@ -198,6 +198,7 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddi
 
 	# Features
 def csv_to_X(reddit_data):
+
 	features = list(reddit_data.columns)
 	features = [n for n in features if n not in ['subreddit', 'author', 'date', 'post']]
 	print('double check features: ', features)
@@ -209,7 +210,8 @@ def csv_to_X(reddit_data):
 	docs_all = [] #for tfidf
 	X = []
 	y = []
-	subreddits = list(reddit_data.subreddit)
+	subreddits = np.unique(list(reddit_data.subreddit))
+	print(subreddits)
 	for sr in subreddits:
 		df_subreddit = reddit_data[reddit_data.subreddit==sr]
 		# if subsample:
@@ -287,6 +289,7 @@ if __name__ == "__main__":
 	task = config.task
 	midpandemic = config.midpandemic
 	subsample_midpandemic = config.subsample_midpandemic
+	subsample_controls = config.subsample_controls
 
 
 	subreddit = subreddits[config.subredditN]
@@ -298,6 +301,7 @@ if __name__ == "__main__":
 
 
 	# Load data
+	print('===loading data====')
 	if model in ['lstm', 'gru', 'bi-lstm', 'bi-gru']:
 		# todo
 		pass
@@ -305,18 +309,19 @@ if __name__ == "__main__":
 	# 	vector models
 		if task == 'binary':
 			reddit_data = load_reddit.binary(input_dir + 'feature_extraction/', subreddit, subreddits,
-			                                 pre_or_post='pre', subsample=subsample)
+			                                 pre_or_post='pre', subsample=subsample, subsample_controls = subsample_controls )
+
 
 			if midpandemic:
 				mid_pandemic_data = load_reddit.binary(input_dir + 'feature_extraction/', subreddit, subreddits,
 			                                 pre_or_post='post', subsample=subsample_midpandemic)
 
 
-				X_test_midpandemic = csv_to_X_midpandemic(mid_pandemic_data)
+				# X_test_midpandemic = csv_to_X_midpandemic(mid_pandemic_data)
 
 		elif task == 'multiclass':
 			reddit_data = load_reddit.multiclass(input_dir+'feature_extraction/', subreddits, pre_or_post = 'pre')
-
+	print('===loaded data====')
 	# Count
 	days = np.unique(reddit_data.date)
 	days.sort()

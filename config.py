@@ -123,12 +123,15 @@ if run_version_number in [5]:
 # try: [subreddits.remove(n) for n in subreddits_remove]
 # except: pass
 
+
+
+
 if toy:
 	subsample = 80
 	# subreddits = subreddits
 	subreddits = ['addiction', 'adhd', 'depression']
 
-
+subsample_controls = int(subsample/len(subreddits)+500)
 
 
 
