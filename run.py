@@ -28,7 +28,8 @@ import switcher
 import umap
 sys.path.append('./../../catpro')
 from catpro.preprocessing_text import extract_features
-from catpro import data_helpers, plot_outputs
+from catpro import data_helpers
+# from catpro import plot_outputs
 # from catpro import evaluate_metrics
 
 
@@ -190,7 +191,8 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddi
 
 		cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
 
-		plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
+		pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix.csv')
+		# plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
 
 
 
@@ -424,6 +426,9 @@ if __name__ == "__main__":
 				f.write('\n=======================================================\n')
 
 			results.to_csv(output_dir+model_name+'.csv',index_label=0)
+
+			# cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
+			# pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix.csv')
 
 
 
