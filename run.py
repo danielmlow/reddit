@@ -136,31 +136,38 @@ reload(config)
 # 	return words
 
 
-def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir, append_to_name=None):
+def final_model(X_train, y_train, X_test, y_test,run_modelN, subreddit, subreddits,features,output_dir, parameters=None,append_to_name=None):
 	pipeline = config_parameters.final_pipeline(run_modelN)
 	# TODO would this work model_and_params = parameters[run_modelN]
-	for i, model_and_params in enumerate(parameters):
-		if i != run_modelN:
-			continue
+
+	# todo for gridsearch
+	# for i, model_and_params in enumerate(parameters):
+	# 	if i != run_modelN:
+	# 		continue
+		# model_name = str(model_and_params.get('clf__estimator')).split('(')[0]
 
 		# pipeline.set_params(**model_and_params)
-		pipeline.fit(X_train, y_train)
-		y_pred = pipeline.predict(X_test)
-		# Evaluate
-		report = classification_report(y_test, y_pred, target_names=subreddits, output_dict=True)
-		df = pd.DataFrame(report).transpose()
+	pipeline.fit(X_train, y_train)
+	y_pred = pipeline.predict(X_test)
+	# Evaluate
+	report = classification_report(y_test, y_pred, target_names=subreddits, output_dict=True)
+	df = pd.DataFrame(report).transpose()
 
-		model_name = str(model_and_params.get('clf__estimator')).split('(')[0]
-		if append_to_name:
-			model_name += '_'+append_to_name
+	model_name = str(pipeline['clf']).split('(')[0]
+	model_name = model_name.replace('[','')
+
+	if append_to_name:
+		model_name += '_'+append_to_name
 
 
-		df.to_csv(output_dir + 'report_{}.csv'.format(model_name), index_label=0)
-		df.to_latex(output_dir + 'report_latex_{}'.format(model_name))
-		with open(model_name + '_params.txt_{}'.format(model_name), 'a+') as f:
-			f.write(str(model_and_params))
+	df.to_csv(output_dir + 'report_{}.csv'.format(model_name), index_label=0)
+	df.to_latex(output_dir + 'report_latex_{}'.format(model_name))
+	# with open(output_dir + model_name + '_params.txt_{}'.format(model_name), 'a+') as f:
+	# 	f.write(str(model_and_params))
 
-		# (n_classes, n_features)
+	# (n_classes, n_features)
+
+	if 'SVC' in model_name or 'SVM' in model_name or 'SGD' in model_name:
 		coefs = pipeline['clf'].coef_
 		coefs_df = pd.DataFrame(coefs).T
 		# coefs_df = pd.concat([pd.DataFrame(features), pd.DataFrame(np.transpose(coefs))], axis=1)
@@ -193,10 +200,10 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddi
 		y_pred_probs.to_csv(output_dir + 'y_pred_probs_{}.csv'.format(model_name), index=None)
 
 
-		cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
+	cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
 
-		pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix_{}.csv'.format(model_name))
-		# plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
+	pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix_{}.csv'.format(model_name))
+	# plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
 
 
 
@@ -361,7 +368,7 @@ if __name__ == "__main__":
 		if midpandemic_test:
 			subreddits_midpandemic = subreddits+['COVID19_support']
 			midpandemic_test_data = load_reddit.multiclass(input_dir, subreddits_midpandemic ,
-			                            pre_or_post='post',subsample=None, subsample_midpandemic_test=None, subsample_subreddits_overN=None, days=(0, -1))
+			                            pre_or_post='post',subsample_midpandemic_test=subsample_midpandemic_test, days=(0, -1))
 
 
 	elif task == 'multiclass':
@@ -434,8 +441,9 @@ if __name__ == "__main__":
 		subreddits = ['control', subreddit]
 
 	if run_final_model:
-		parameters = config_parameters.parameters_all_models_final(y_train,dim_reduction)
+		parameters = config_parameters.final_pipeline(run_modelN)
 	else:
+		# gridsearch
 		parameters = config_parameters.parameters_all_models(y_train, dim_reduction=dim_reduction)
 
 	# write all variables in config)
@@ -450,13 +458,15 @@ if __name__ == "__main__":
 
 
 	if run_final_model:
-		final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir)
-		# Here we dont care about labels, only y_probs
-		final_model(X_train, y_train, X_test_covid, y_test_covid, run_modelN, parameters, subreddit, subreddits, features,
-		            output_dir, append_to_name = 'covid19')
+		final_model(X_train, y_train, X_test, y_test,run_modelN, subreddit, subreddits,features,output_dir)
 
-		final_model(X_train, y_train, X_test_sr, y_test_sr, run_modelN, parameters, subreddit, subreddits, features,
-		            output_dir,append_to_name = 'midpandemic')
+		if midpandemic_test:
+			# Here we dont care about labels, only y_probs
+			final_model(X_train, y_train, X_test_covid, y_test_covid, run_modelN, subreddit, subreddits, features,
+			            output_dir, append_to_name = 'covid19')
+
+			final_model(X_train, y_train, X_test_sr, y_test_sr, run_modelN, subreddit, subreddits, features,
+			            output_dir,append_to_name = 'midpandemic')
 
 	else:
 		# Hyperparameter tuning
@@ -508,6 +518,7 @@ if __name__ == "__main__":
 
 
 			model_name= str(results.param_clf__estimator[0]).split('(')[0]
+			model_name = model_name.replace('[','')
 
 			# joblib.dump(gscv.best_estimator_, output_dir + '{}.pkl'.format(model_name))
 

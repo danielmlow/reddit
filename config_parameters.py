@@ -210,7 +210,7 @@ def final_pipeline(run_modelN):
 	elif run_modelN == 4:
 		k = 'all'
 		scaler = MinMaxScaler()
-		clf = XGBModel(n_jobs=-1)
+		clf = XGBModel(objective='binary:hinge',n_jobs=-1)
 
 	# elif run_modelN == 6:
 	# 	k = 'all'
