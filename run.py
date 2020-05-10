@@ -136,7 +136,7 @@ reload(config)
 # 	return words
 
 
-def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir):
+def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir, append_to_name=None):
 	pipeline = config_parameters.final_pipeline(run_modelN)
 	# TODO would this work model_and_params = parameters[run_modelN]
 	for i, model_and_params in enumerate(parameters):
@@ -151,9 +151,13 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddi
 		df = pd.DataFrame(report).transpose()
 
 		model_name = str(model_and_params.get('clf__estimator')).split('(')[0]
+		if append_to_name:
+			model_name += '_'+append_to_name
+
+
 		df.to_csv(output_dir + 'report_{}.csv'.format(model_name), index_label=0)
 		df.to_latex(output_dir + 'report_latex_{}'.format(model_name))
-		with open(model_name + '_params.txt', 'a+') as f:
+		with open(model_name + '_params.txt_{}'.format(model_name), 'a+') as f:
 			f.write(str(model_and_params))
 
 		# (n_classes, n_features)
@@ -191,19 +195,16 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddi
 
 		cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
 
-		pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix.csv')
+		pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix.csv_{}'.format(model_name))
 		# plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
 
 
 
 	# Features
-def csv_to_X(reddit_data):
-
+def csv_to_X(reddit_data, task='binary'):
 	features = list(reddit_data.columns)
 	features = [n for n in features if n not in ['subreddit', 'author', 'date', 'post']]
 	print('double check features: ', features)
-	# posts = np.array(reddit_data.subreddit.value_counts()).astype(int)
-	# days = np.unique(reddit_data.date)
 
 	# Build X
 	# docs =· todo for tfidf
@@ -230,40 +231,82 @@ def csv_to_X(reddit_data):
 
 	X, y, docs_all = list_of_list_to_array(X),list_of_list_to_array(y),list_of_list_to_array(docs_all)
 	le = preprocessing.LabelEncoder()
+
+	# Make sure 'control' is always 0
+	try:
+		y = np.array([n.replace('control', '0') for n in y])
+	except: pass
+
 	y_encoded = le.fit_transform(y)
 
 	# Split
 	X_train, X_test, y_train, y_test, docs_train, docs_test  = train_test_split(X, y_encoded, docs_all,test_size=0.20, random_state=seed_value)
+	return X_train, X_test, y_train, y_test, docs_train, docs_test, features
 
 
-	# from importlib import reload
-	# reload(extract_features)
-	if 'tfidf' in config.features:
-		train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train, X_test_sentences=docs_test,
-		                                                                      ngram_range=(1, 2),
-		                                                                      max_features=256, min_df=2, max_df=0.8,
-		                                                                      model=model, stem=config.stem)
-		X_train = np.concatenate([X_train, train_tfidf], axis=1)
-		X_test = np.concatenate([X_test, test_tfidf], axis=1)
-		features = np.concatenate([features, feature_names_tfidf], axis=0)
 
-	return X_train, y_train, X_test, y_test, features
+import datetime
 
-def csv_to_X_midpandemic(df, timestep):
-	days = np.unique(df.date)
-	days_timestep = days[::timestep]
-	X = []
-	y = []
-	for i in range(0, len(days), timestep):
-		days_week = days[i:i + timestep]
-		df_week = df[df.date.isin(days_week)]
-		df_week_feature_cols = df_week[features].values
-		df_week_y = list(df_week.subreddit)
-		X.append(df_week_feature_cols)
-		y.append(df_week_y)
+def csv_to_X_midpandemic(df, timestep = None,filter_days = ['2020/03/11', '2020/04/20'], subreddit = 'COVID19_support'):
 
-	X = np.array(X)
-	y = np.array(y)
+
+	features = list(df.columns)
+	features = [n for n in features if n not in ['subreddit', 'author', 'date', 'post']]
+
+	if filter_days:
+		df.date = df.date.replace({'/': '-'}, regex=True)
+
+		start_date = filter_days[0].replace('/','-')
+		end_date = filter_days[1].replace('/', '-')
+		df = df[(df['date'] > start_date ) & (df['date'] < end_date )]
+
+	df_sr = df[df.subreddit == subreddit]
+	df_control = df[df.subreddit != subreddit]
+	df_control = load_reddit.subsample_df(df_control,df_sr.shape[0])
+	df_control.subreddit = 'control'
+
+	df_sr = pd.concat([df_sr,df_control])
+
+	X_test_sr = df_sr[features].values
+	y_test_sr = list(df_sr .subreddit)
+	docs_test_sr = list(df_sr ['post'])
+	docs_test_sr = [post.replace('\n\n', ' ').replace('  ', ' ').replace('“', '').replace('”', '') for post in
+	                docs_test_sr]  # here I remove paragraph split, double spaces and some other weird stuff, this should be done once for all posts\n",
+
+	le = preprocessing.LabelEncoder()
+
+	# Make sure 'control' is always 0
+	try:
+		y_test_sr  = np.array([n.replace('control', '0') for n in y_test_sr ])
+	except: pass
+
+	y_test_sr = le.fit_transform(y_test_sr )
+
+
+	if timestep:
+		# todo
+		days = np.unique(df.date)
+		days_timestep = days[::timestep]
+		X = []
+		y = []
+		for i in range(0, len(days), timestep):
+			days_week = days[i:i + timestep]
+			df_week = df[df.date.isin(days_week)]
+			df_week_feature_cols = df_week[features].values
+			df_week_y = list(df_week.subreddit)
+			X.append(df_week_feature_cols)
+			y.append(df_week_y)
+
+
+	if [0] == list(np.unique(y_test_sr)):
+		y_test_sr = [1]*len(y_test_sr)
+	return X_test_sr, y_test_sr, docs_test_sr
+
+
+
+
+
+
 
 if __name__ == "__main__":
 	# Config
@@ -287,10 +330,13 @@ if __name__ == "__main__":
 
 	dim_reduction = config.dim_reduction
 	task = config.task
-	midpandemic = config.midpandemic
-	subsample_midpandemic = config.subsample_midpandemic
-	subsample_controls = config.subsample_controls
-
+	midpandemic_train = config.midpandemic_train
+	midpandemic_test = config.midpandemic_test
+	subsample_midpandemic_test =  config.subsample_midpandemic_test
+	# subsample_midpandemic = config.subsample_midpandemic
+	# subsample_controls = config.subsample_controls
+	pre_or_post = config.pre_or_post
+	timestep = config.timestep
 
 	subreddit = subreddits[config.subredditN]
 
@@ -299,42 +345,62 @@ if __name__ == "__main__":
 	else:
 		output_dir = data_helpers.make_output_dir(output_dir, name='run_gridsearch_v{}_model{}_{}'.format(run_version_number, run_modelN, subreddit))
 
+	#
+	# # Load data
+	# print('===loading data====')
+	# if model in ['lstm', 'gru', 'bi-lstm', 'bi-gru']:
+	# 	# todo
+	# 	pass
+	# else:
+	# # 	vector models
+	if task == 'binary':
+		reddit_data = load_reddit.binary(input_dir, subreddit, subreddits,
+		                                 pre_or_post=pre_or_post, subsample=subsample )
 
-	# Load data
-	print('===loading data====')
-	if model in ['lstm', 'gru', 'bi-lstm', 'bi-gru']:
-		# todo
-		pass
-	else:
-	# 	vector models
-		if task == 'binary':
-			reddit_data = load_reddit.binary(input_dir + 'feature_extraction/', subreddit, subreddits,
-			                                 pre_or_post='pre', subsample=subsample, subsample_controls = subsample_controls )
+		if midpandemic_test:
+			midpandemic_test_data = load_reddit.multiclass(input_dir, subreddits+['COVID19_support'],
+			                            pre_or_post='post',subsample=None, subsample_midpandemic_test=subsample_midpandemic_test, subsample_subreddits_overN=None, days=(0, -1))
 
 
-			if midpandemic:
-				mid_pandemic_data = load_reddit.binary(input_dir + 'feature_extraction/', subreddit, subreddits,
-			                                 pre_or_post='post', subsample=subsample_midpandemic)
 
+	elif task == 'multiclass':
+		reddit_data = load_reddit.multiclass(input_dir, subreddits, pre_or_post = 'pre')
 
-				# X_test_midpandemic = csv_to_X_midpandemic(mid_pandemic_data)
+	# Training set, whether its for binary or multiclass
+	X_train, X_test, y_train, y_test, docs_train, docs_test, features = csv_to_X(reddit_data, task)
 
-		elif task == 'multiclass':
-			reddit_data = load_reddit.multiclass(input_dir+'feature_extraction/', subreddits, pre_or_post = 'pre')
+	if midpandemic_test:
+		X_test_covid, y_test_covid, docs_test_covid= csv_to_X_midpandemic(midpandemic_test_data , timestep=None,
+		                                                          filter_days=['2020/03/11', '2020/04/20'],
+		                                                          subreddit='COVID19_support')
+		X_test_sr, y_test_sr, docs_test_sr = csv_to_X_midpandemic(midpandemic_test_data , timestep=None,
+		                                                          filter_days=['2020/03/11', '2020/04/20'],
+		                                                          subreddit=subreddit)
+
+		print('covid', X_test_covid.shape)
+		print('sr',X_test_sr.shape)
+
 	print('===loaded data====')
+
+
+
+
+
+
 	# Count
-	days = np.unique(reddit_data.date)
-	days.sort()
-	days_train = days[:]
-	reddit_data = reddit_data [reddit_data .date.isin(days_train)]
-	counts = reddit_data.groupby(["subreddit", "date"]).size().reset_index(name='count')
-	sr_all = []
-	counts_all = []
-	for sr in subreddits:
-		counts_d = counts[counts.subreddit == sr].sum()
-		print(sr, ': ', np.round(float(list(counts_d)[-1]), 2))
-		sr_all.append(sr)
-		counts_all.append(np.round(float(list(counts_d)[-1]), 2))
+	# days = np.unique(reddit_data.date)
+	# days.sort()
+	# days_train = days[:]
+	# reddit_data = reddit_data [reddit_data .date.isin(days_train)]
+	# counts = reddit_data.groupby(["subreddit", "date"]).size().reset_index(name='count')
+	# sr_all = []
+	# counts_all = []
+	# for sr in subreddits:
+	# 	counts_d = counts[counts.subreddit == sr].sum()
+	# 	print(sr, ': ', np.round(float(list(counts_d)[-1]), 2))
+	# 	sr_all.append(sr)
+	# 	counts_all.append(np.round(float(list(counts_d)[-1]), 2))
+
 
 	# Exclude under
 	# if include_subreddits_overN:
@@ -344,13 +410,42 @@ if __name__ == "__main__":
 	# 	reddit_data = reddit_data[reddit_data.subreddit.isin(subreddits)]
 
 	# todo here I can use all data or subsample to  min (5600)
-	X_train, y_train, X_test, y_test, features = csv_to_X(reddit_data)
 
+
+	# from importlib import reload
+	# reload(extract_features)
+
+	# Extract tfidf
+	train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train, X_test_sentences=docs_test,
+	                                                                      ngram_range=(1, 2),
+	                                                                      max_features=256, min_df=2, max_df=0.8,
+	                                                                      model=model, stem=config.stem)
+	X_train = np.concatenate([X_train, train_tfidf], axis=1)
+	X_test = np.concatenate([X_test, test_tfidf], axis=1)
+	features = np.concatenate([features, feature_names_tfidf], axis=0)
+
+	if midpandemic_test:
+		train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train,
+		                                                                      X_test_sentences=docs_test_covid,
+		                                                                      ngram_range=(1, 2),
+		                                                                      max_features=256, min_df=2, max_df=0.8,
+		                                                                      model=model, stem=config.stem)
+		X_test_covid = np.concatenate([X_test_covid, test_tfidf], axis=1)
+
+		train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train,
+		                                                                      X_test_sentences=docs_test_sr,
+		                                                                      ngram_range=(1, 2),
+		                                                                      max_features=256, min_df=2, max_df=0.8,
+		                                                                      model=model, stem=config.stem)
+		X_test_sr = np.concatenate([X_test_sr, test_tfidf], axis=1)
 
 	# Run models
 	# ================================================================================
 
 	subreddits = list(np.unique(reddit_data.subreddit))
+	if task == 'binary':
+		subreddits = ['control', subreddit]
+
 	if run_final_model:
 		parameters = config_parameters.parameters_all_models_final(y_train,dim_reduction)
 	else:
@@ -369,6 +464,12 @@ if __name__ == "__main__":
 
 	if run_final_model:
 		final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddit, subreddits,features,output_dir)
+		# Here we dont care about labels, only y_probs
+		final_model(X_train, y_train, X_test_covid, y_test_covid, run_modelN, parameters, subreddit, subreddits, features,
+		            output_dir, append_to_name = 'covid19')
+
+		final_model(X_train, y_train, X_test_sr, y_test_sr, run_modelN, parameters, subreddit, subreddits, features,
+		            output_dir,append_to_name = 'midpandemic')
 
 	else:
 		# Hyperparameter tuning

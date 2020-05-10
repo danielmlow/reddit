@@ -24,12 +24,16 @@ cv = 5
 features = ['tfidf', 'liwc', 'readability'] #todo: make loading variable, removed, add to args
 stem = True
 task = 'binary' #'multiclass'
-midpandemic = False
-subsample_midpandemic = 500
+midpandemic_train = False
+midpandemic_test = True
+subsample_midpandemic_test = 1900
+
+# subsample_midpandemic = 500
+pre_or_post = 'pre'
+timestep = None
 
 
-
-input_dir = './../../datum/reddit/input/'
+input_dir = './../../datum/reddit/input/feature_extraction/'
 output_dir = './../../datum/reddit/output/'
 
 
@@ -132,7 +136,7 @@ if toy:
 	subreddits = ['addiction', 'adhd', 'depression']
 
 
-subsample_controls = int(subsample/len(subreddits)+500)
+# subsample_controls = int(subsample/len(subreddits)+500)
 
 
 
