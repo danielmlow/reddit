@@ -2,10 +2,10 @@
 #
 #SBATCH --job-name=gs_v6
 #SBATCH --array=1-13
-#SBATCH --time=9:00:00
+#SBATCH --time=2:00:00
 #SBATCH -N 1
-#SBATCH -c 8
-#SBATCH --mem=20GB
+#SBATCH -c 1
+#SBATCH --mem=10GB
 #SBATCH -o ./../../datum/reddit/output/slurm/slurm-%A_%a.out
 
 echo "now processing task id:: " ${SLURM_ARRAY_TASK_ID}
