@@ -115,7 +115,7 @@ if run_version_number in [4]:
 	subreddits = ['healthanxiety', 'lonely', 'socialanxiety', 'suicidewatch']
 	subsample = 11000  # for alcoholism
 
-if run_version_number in [5]:
+if run_version_number in [5,6]:
 	subreddits = ['addiction','EDAnonymous','adhd','autism','alcoholism', 'bipolarreddit', 'depression', 'anxiety','healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 	# subreddits = ['depression', 'anxiety', 'suicidewatch']
 	subsample = 5600 #for alcoholism

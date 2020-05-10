@@ -149,14 +149,16 @@ def parameters_all_models_final(y, dim_reduction):
 			'feature_selection__k': k,
 		},
 		{
-			'clf__estimator': [ExtraTreesClassifier(max_features='auto')],
+			'clf__estimator': [ExtraTreesClassifier()],
 			'normalization': normalization_std,
 			'clf__estimator__n_estimators': (16,32,128),
 			'clf__estimator__max_depth':(32, 64, None),
 			'feature_selection__k': k,
 		},
+		# default params: https://stackoverflow.com/questions/34674797/xgboost-xgbclassifier-defaults-in-python
 		{
-			'clf__estimator': [XGBModel(objective='multi:softmax',num_class=n_classes, max_features='auto')],
+			# 'clf__estimator': [XGBModel(objective='multi:softmax',num_class=n_classes, max_features='auto')],
+			'clf__estimator': [XGBModel()],
 			'normalization': normalization_std,
 			'clf__estimator__n_estimators': (16,32,128),
 			'clf__estimator__max_depth':(32, 64),
@@ -166,7 +168,7 @@ def parameters_all_models_final(y, dim_reduction):
 		{
 		'clf__estimator': [MLPClassifier()],
 		'normalization': normalization_std,
-		'clf__estimator__batch_size': (128,256,512),
+		'clf__estimator__batch_size': (512),
 		'clf__estimator__hidden_layer_sizes': [(50,50,50), (50,100,50), (100,)],
 		'clf__estimator__activation': ['relu'],
 		'clf__estimator__alpha': [0.0001, 0.05],
@@ -184,28 +186,36 @@ def final_pipeline(run_modelN):
 		scaler = MinMaxScaler()
 		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
 
-
-	elif run_modelN == 1:
-		# 	todo:
+	if run_modelN == 1:
 		k = 'all'
 		scaler = MinMaxScaler()
-		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='elasticnet', loss='log')
 
 	elif run_modelN == 2:
-		# 	todo:
 		k = 'all'
 		scaler = MinMaxScaler()
-		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+		clf = SVC(kernel='linear', probability=True)
+
+	#
+	# elif run_modelN == 3:
+	# 	k = 'all'
+	# 	scaler = MinMaxScaler()
+	# 	clf = SVC(kernel='rbf', probability=True)
+
 	elif run_modelN == 3:
-		# 	todo:
 		k = 'all'
 		scaler = MinMaxScaler()
-		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+		clf = ExtraTreesClassifier(n_jobs=-1)
+
 	elif run_modelN == 4:
-		# 	todo:
 		k = 'all'
 		scaler = MinMaxScaler()
-		clf = SGDClassifier(early_stopping=True, max_iter=5000, penalty='l1', loss='log')
+		clf = XGBModel(n_jobs=-1)
+
+	# elif run_modelN == 6:
+	# 	k = 'all'
+	# 	scaler = MinMaxScaler()
+	# 	clf = MLPClassifier(hidden_layer_sizes=(256),early_stopping=True,max_iter=1000,)
 
 	pipeline = Pipeline([
 		('normalization',scaler),

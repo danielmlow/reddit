@@ -195,13 +195,13 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, parameters,subreddi
 
 		cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
 
-		pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix.csv_{}'.format(model_name))
+		pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix_{}.csv'.format(model_name))
 		# plot_outputs.plot_confusion_matrix(cm, subreddits, normalize=True, save_to=output_dir + 'confusion_matrix.png')
 
 
 
 	# Features
-def csv_to_X(reddit_data, task='binary'):
+def df_to_X(reddit_data, task='binary'):
 	features = list(reddit_data.columns)
 	features = [n for n in features if n not in ['subreddit', 'author', 'date', 'post']]
 	print('double check features: ', features)
@@ -247,7 +247,7 @@ def csv_to_X(reddit_data, task='binary'):
 
 import datetime
 
-def csv_to_X_midpandemic(df, timestep = None,filter_days = ['2020/03/11', '2020/04/20'], subreddit = 'COVID19_support'):
+def df_to_X_midpandemic(df, timestep = None,filter_days = ['2020/03/11', '2020/04/20'], subreddit = 'COVID19_support'):
 
 
 	features = list(df.columns)
@@ -357,23 +357,25 @@ if __name__ == "__main__":
 		reddit_data = load_reddit.binary(input_dir, subreddit, subreddits,
 		                                 pre_or_post=pre_or_post, subsample=subsample )
 
+		# Create additional test sets, 1 for same subreddit but of midpandemic data and 1 for COVID19
 		if midpandemic_test:
-			midpandemic_test_data = load_reddit.multiclass(input_dir, subreddits+['COVID19_support'],
-			                            pre_or_post='post',subsample=None, subsample_midpandemic_test=subsample_midpandemic_test, subsample_subreddits_overN=None, days=(0, -1))
-
+			subreddits_midpandemic = subreddits+['COVID19_support']
+			midpandemic_test_data = load_reddit.multiclass(input_dir, subreddits_midpandemic ,
+			                            pre_or_post='post',subsample=None, subsample_midpandemic_test=None, subsample_subreddits_overN=None, days=(0, -1))
 
 
 	elif task == 'multiclass':
 		reddit_data = load_reddit.multiclass(input_dir, subreddits, pre_or_post = 'pre')
 
-	# Training set, whether its for binary or multiclass
-	X_train, X_test, y_train, y_test, docs_train, docs_test, features = csv_to_X(reddit_data, task)
+	# Convert df to 
+	X_train, X_test, y_train, y_test, docs_train, docs_test, features = df_to_X(reddit_data, task)
 
+	
 	if midpandemic_test:
-		X_test_covid, y_test_covid, docs_test_covid= csv_to_X_midpandemic(midpandemic_test_data , timestep=None,
+		X_test_covid, y_test_covid, docs_test_covid= df_to_X_midpandemic(midpandemic_test_data , timestep=None,
 		                                                          filter_days=['2020/03/11', '2020/04/20'],
 		                                                          subreddit='COVID19_support')
-		X_test_sr, y_test_sr, docs_test_sr = csv_to_X_midpandemic(midpandemic_test_data , timestep=None,
+		X_test_sr, y_test_sr, docs_test_sr = df_to_X_midpandemic(midpandemic_test_data , timestep=None,
 		                                                          filter_days=['2020/03/11', '2020/04/20'],
 		                                                          subreddit=subreddit)
 
@@ -381,11 +383,6 @@ if __name__ == "__main__":
 		print('sr',X_test_sr.shape)
 
 	print('===loaded data====')
-
-
-
-
-
 
 	# Count
 	# days = np.unique(reddit_data.date)
@@ -401,17 +398,6 @@ if __name__ == "__main__":
 	# 	sr_all.append(sr)
 	# 	counts_all.append(np.round(float(list(counts_d)[-1]), 2))
 
-
-	# Exclude under
-	# if include_subreddits_overN:
-	# 	subreddits = [n for n,i in zip(sr_all, counts_all) if i>include_subreddits_overN ]
-
-	# for sr in subreddits:
-	# 	reddit_data = reddit_data[reddit_data.subreddit.isin(subreddits)]
-
-	# todo here I can use all data or subsample to  min (5600)
-
-
 	# from importlib import reload
 	# reload(extract_features)
 
@@ -423,6 +409,7 @@ if __name__ == "__main__":
 	X_train = np.concatenate([X_train, train_tfidf], axis=1)
 	X_test = np.concatenate([X_test, test_tfidf], axis=1)
 	features = np.concatenate([features, feature_names_tfidf], axis=0)
+
 
 	if midpandemic_test:
 		train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train,

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-#SBATCH --job-name=gs_v5
+#SBATCH --job-name=gs_v6
 #SBATCH --array=1-13
-#SBATCH --time=2:00:00
+#SBATCH --time=9:00:00
 #SBATCH -N 1
 #SBATCH -c 8
 #SBATCH --mem=20GB
@@ -14,7 +14,7 @@ python3 run.py --job_array_task_id=${SLURM_ARRAY_TASK_ID} --run_version_number=5
 
 echo 'Finished.'
 
-# python3 -i run.py --job_array_task_id=1 --run_version_number=5 --toy=True --dim_reduction=False --run_modelN=0
+# python3 -i run.py --job_array_task_id=1 --run_version_number=6 --toy=True --dim_reduction=False --run_modelN=0
 # tesla-k20:2
 # GEFORCEGTX1080TI:4
 # --gres=gpu:1
