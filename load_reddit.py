@@ -1,19 +1,26 @@
+#!/usr/bin/env python3
+
+'''
+Authors: Daniel M. Low
+License: Apache 2.0
+'''
 
 import numpy as np
 import pandas as pd
 
-def subsample_df(df, subsample=False):
+def subsample_df(df, subsample=3000):
 	# subsample rows to balance classes
 	if type(subsample) == float:
+		# if float (e.g, 0.2) obtain int
 		subsample = int(df.shape[0]*subsample)
 	df = df.reset_index(drop=True)
 	df2 = df.loc[np.random.choice(df.index,subsample, replace=False)]
 	return df2
 
 
-def fix(df, subreddit='', subsample=3000):
+def clean_and_subsample(df, subreddit='addiction', subsample=3000):
 	# remove author duplicates and shuffle so we dont keep only first posts in time
-	reddit_data = df.sample(frac=1)
+	reddit_data = df.sample(frac=1) #shuffle
 	reddit_data = reddit_data.drop_duplicates(subset='author', keep='first')
 	reddit_data  = reddit_data [~reddit_data.author.str.contains('|'.join(['bot', 'BOT', 'Bot']))] # There is at least one bot per subreddit
 	reddit_data = reddit_data[~reddit_data.post.str.contains('|'.join(['quote', 'QUOTE', 'Quote']))] # Remove posts in case quotes are long
@@ -28,11 +35,11 @@ def fix(df, subreddit='', subsample=3000):
 
 def multiclass(input_dir, subreddits, pre_or_post = 'pre', subsample=None):
 	reddit_data = pd.read_csv(input_dir +subreddits[0]+'_{}_features.csv'.format(pre_or_post), index_col=False)
-	reddit_data = fix(reddit_data,subreddits[0], subsample=subsample)
+	reddit_data = clean_and_subsample(reddit_data,subreddits[0], subsample=subsample)
 
 	for i in np.arange(1, len(subreddits)):
 		new_data = pd.read_csv(input_dir+subreddits[i]+'_{}_features.csv'.format(pre_or_post))
-		new_data = fix(new_data,subreddits[i], subsample=subsample)
+		new_data = clean_and_subsample(new_data,subreddits[i], subsample=subsample)
 		reddit_data = pd.concat([reddit_data, new_data], axis=0)
 
 	return reddit_data
@@ -62,15 +69,3 @@ def binary(input_dir, subreddit, control_subreddits, pre_or_post = 'pre', subsam
 		reddit_data = pd.concat([reddit_data_sr,reddit_data_controls])
 
 	return reddit_data
-
-# if subreddit == 'healthanxiety':
-# 	exclude = ['healthanxiety','anxiety']
-# elif subreddit == 'socialanxiety':
-# 	exclude = ['socialanxiety', 'anxiety']
-# elif subreddit == 'anxiety':
-# 	exclude = ['anxiety','healthanxiety','socialanxiety']
-# elif subreddit == 'depression':
-# 	exclude = ['depression','suicidewatch']
-# elif subreddit == 'suicidewatch':
-# 	exclude = ['suicidewatch','depression']
-# else:

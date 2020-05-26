@@ -29,7 +29,7 @@ def summarize(input_dir, test_set='', model=0, model_name='SGDClassifier'):
 		if '.DS_Store' in dir or 'summary' in dir:
 			continue
 		subreddit = dir.split('_')[-1]
-		result = np.round(pd.read_csv(input_dir + dir + '/report_{}{}.csv'.format(model_name, test_set))['f1-score'][4], 2)
+		result = np.round(pd.read_csv(input_dir + dir + '/report_{}{}.csv'.format(model_name, test_set))['f1-score'][4], 3)
 		results.append([subreddit, result])
 
 		if model_name in ['SGDClassifier', 'SVC']:
@@ -128,8 +128,8 @@ if __name__ == "__main__":
 
 
 
-	input_dir = './../../datum/reddit/output/binary6_all_models/'
-	# output_dir = './../../datum/reddit/output/binary6_all_models/'
+	input_dir = './../../datum/reddit/output/binary7_all_models/'
+	highest_performing_model = 2
 
 	models = range(0,5)
 	model_names = {0:'SGDClassifier',
@@ -185,9 +185,9 @@ if __name__ == "__main__":
 
 
 
-	# Choose model: L1
-	input_dir = './../../datum/reddit/output/binary6_model0/'
-	for model in [0]:
+	# Choose model: 0,1,2,3, or 4
+	input_dir = f'./../../datum/reddit/output/binary7_model{highest_performing_model}/'
+	for model in [highest_performing_model]:
 		model_name = model_names.get(model)
 		results_pre =  summarize(input_dir, test_set='', model=model, model_name=model_name)
 		results_mid = summarize(input_dir, test_set='_midpandemic', model=model, model_name=model_name)
@@ -199,20 +199,28 @@ if __name__ == "__main__":
 	results_pre = results_pre.rename(columns={'Weighted F1':'F1 pre'})
 	results_mid = results_mid.rename(columns={'Weighted F1': 'F1 mid'})
 	results = results_pre.merge(results_mid, on='subreddit')
-
-
+	# add delta col
+	delta = results.iloc[:,1]-results.iloc[:,2]
+	delta = delta.abs()
+	results['Change'] = delta
+	results = results.sort_values('Change')[::-1]
+	# Add mean
 	results_mean = pd.DataFrame(results.mean()).T
-	results_mean['subreddit'] = 'Mean'
+	results_mean['subreddit'] = ['Mean']
 	cols = results_mean.columns.tolist()
-	cols = cols[-1:] + cols[:-1]
-	results_mean = results_mean[cols]
 	results= results.append(results_mean, ignore_index=True)
 	results.set_index('subreddit', inplace=True)
-	results = results.round(2)
+	results= results[['F1 pre', 'F1 mid', 'Change']]
+	results = results.round(3)
+
+
 
 	stat, p = stats.ttest_ind(results.iloc[:, 0], results.iloc[:, 1])
 	# We hypothesize that accuracy will decrease
 	one_sided_p = p / 2
+
+
+
 	results.to_csv(input_dir+'summary_model{}/results_pre_vs_mid.csv'.format(model))
 	results_latex = results.to_latex(index=True)
 	with open(input_dir+'summary_model{}/results_pre_vs_mid_latex.txt'.format(model), 'a+') as f:
@@ -231,27 +239,25 @@ if __name__ == "__main__":
 	subreddits=np.unique(coefs.subreddit)
 	coefs_top = []
 	for sr in subreddits:
-		coefs_sr = coefs[coefs.subreddit==sr][-10:]
+		coefs_sr = coefs[coefs.subreddit==sr][-14:]
 		feaures_sr =coefs_sr.index
 		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ][::-1]
-		feaures_sr = str(feaures_sr ).replace('[','').replace(']','').replace("'","")
-		coefs_top.append([sr,feaures_sr])
+		feaures_sr_0 = str(feaures_sr[:7] ).replace('[','').replace(']','').replace("'","")
+		feaures_sr_1 = str(feaures_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
+		coefs_top.append([sr,feaures_sr_0])
+		coefs_top.append(['',feaures_sr_1])
+
 
 	coefs_top = pd.DataFrame(coefs_top)
-	coefs_top.columns = ['Subreddit', 'Top 10 important features']
-	coefs_top.to_csv(input_dir+'top_10_important_features.csv')
-	coefs_top2 = coefs_top.copy()
-	coefs_top2['Top 10 important features'] = coefs_top[['Subreddit', 'Top 10 important features',]].agg(': '.join, axis=1)
-	coefs_top2 = coefs_top2['Top 10 important features']
-	coefs_top2.columns = ['Top 10 important features']
-	coefs_top2.to_csv(input_dir + 'top_10_important_features_v2.csv', index=False)
+	coefs_top.columns = ['Subreddit', 'Top 10 important features - positive coefficients']
+	coefs_top.to_csv(input_dir+'top_10_important_features_positive.csv')
 
 
-	coefs_top_latex= coefs_top.to_latex(index=True,)
-	with open(input_dir + 'top_10_important_features.tex', 'a+') as f:
-		f.write(coefs_top_latex)
-	with pd.option_context("max_colwidth", 5000):
-		print(coefs_top_latex)
+	# coefs_top_latex= coefs_top.to_latex(index=True,)
+	# with open(input_dir + 'top_10_important_features.tex', 'a+') as f:
+	# 	f.write(coefs_top_latex)
+	# with pd.option_context("max_colwidth", 5000):
+	# 	print(coefs_top_latex)
 
 
 	# NEGATIVE Coef samples
@@ -261,35 +267,20 @@ if __name__ == "__main__":
 	coefs_top = []
 	dirs = os.listdir(input_dir)
 	for sr in subreddits:
-		dir_sr = [n for n in dirs if sr in n][0]
-		coefs = pd.read_csv(input_dir + dir_sr+'/coefs_df_SGDClassifier.csv', index_col='Unnamed: 0')
+		dir_sr = [n for n in dirs if '_'+sr in n][0]
+		coefs = pd.read_csv(input_dir + dir_sr+f'/coefs_df_{model_name}.csv', index_col='Unnamed: 0')
 
-		coefs_sr = coefs.sort_values(sr)[:10]
+		coefs_sr = coefs.sort_values(sr)[:14]
 		feaures_sr =coefs_sr.index
 		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ]
-		feaures_sr = str(feaures_sr ).replace('[','').replace(']','').replace("'","")
-		coefs_top.append([sr,feaures_sr])
+		feaures_sr_0 = str(feaures_sr[:7] ).replace('[','').replace(']','').replace("'","")
+		feaures_sr_1 = str(feaures_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
+		coefs_top.append([sr,feaures_sr_0])
+		coefs_top.append(['',feaures_sr_1])
 
 	coefs_top = pd.DataFrame(coefs_top)
 	coefs_top.columns = ['Subreddit', 'Top 10 important features - negative coefficients']
 	coefs_top.to_csv(input_dir+'top_10_important_features_negative.csv')
-
-
-
-
-	coefs_top2 = coefs_top.copy()
-	coefs_top2['Top 10 important features'] = coefs_top[['Subreddit', 'Top 10 important features',]].agg(': '.join, axis=1)
-	coefs_top2 = coefs_top2['Top 10 important features']
-	coefs_top2.columns = ['Top 10 important features']
-	coefs_top2.to_csv(input_dir + 'top_10_important_features_v2.csv', index=False)
-
-
-	coefs_top_latex= coefs_top.to_latex(index=True,)
-	with open(input_dir + 'top_10_important_features_negative.tex', 'a+') as f:
-		f.write(coefs_top_latex)
-	with pd.option_context("max_colwidth", 5000):
-		print(coefs_top_latex)
-
 
 
 	# Max coefficients
@@ -323,6 +314,7 @@ if __name__ == "__main__":
 	max_all.to_csv(input_dir+'main_sr_per_feature.csv', index=False)
 
 	import json
+
 
 
 
