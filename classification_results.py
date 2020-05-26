@@ -97,9 +97,6 @@ def psych_profiler(input_dir, test_set='_covid19', model=0,model_name='SGDClassi
 		y_pred_proportion = np.sum(np.round(y_pred_probs_sr))/len(y_pred_probs_sr)
 		proportion_classified_as_sr.append([subreddit, y_pred_proportion, y_pred_probs_sr])
 
-
-
-
 	df = pd.DataFrame(proportion_classified_as_sr).round(2)
 
 	df.columns = ['subreddit', 'predicted', 'y_pred_probs_sr']

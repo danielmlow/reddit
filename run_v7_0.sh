@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-#SBATCH --job-name=gs_v6
-#SBATCH --array=1-13
+#SBATCH --job-name=reddit
+#SBATCH --array=1-14
 #SBATCH --time=1:00:00
 #SBATCH -N 1
 #SBATCH -c 1

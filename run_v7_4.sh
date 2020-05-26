@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 #SBATCH --job-name=reddit
-#SBATCH --array=1-13
+#SBATCH --array=1-14
 #SBATCH --time=10:00:00
 #SBATCH -N 1
 #SBATCH -c 12
