@@ -212,11 +212,6 @@ def final_pipeline(run_modelN):
 		scaler = MinMaxScaler()
 		clf = XGBModel(objective='binary:hinge',n_jobs=-1)
 
-	# elif run_modelN == 6:
-	# 	k = 'all'
-	# 	scaler = MinMaxScaler()
-	# 	clf = MLPClassifier(hidden_layer_sizes=(256),early_stopping=True,max_iter=1000,)
-
 	pipeline = Pipeline([
 		('normalization',scaler),
 		('feature_selection', SelectKBest(k=k)),

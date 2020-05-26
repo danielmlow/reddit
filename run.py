@@ -7,36 +7,19 @@ License: Apache 2.0
 
 
 import sys
-import os
-import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import preprocessing
-import re
-
-
 from sklearn.feature_selection import SelectKBest
-
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 import switcher
-# from sklearn.feature_extraction.text import TfidfVectorizer
-# from sklearn.pipeline import FeatureUnion
-# import config
 import umap
 sys.path.append('./../../catpro')
 from catpro.preprocessing_text import extract_features
 from catpro import data_helpers
-# from catpro import plot_outputs
-# from catpro import evaluate_metrics
-
-
-# from catpro.models import vector_models
-# from catpro.models import lstm
-from sklearn.model_selection import KFold
-from hetero_feature_union import FeatureExtractor, ItemSelector
 import config_parameters
 import load_reddit
 
@@ -56,84 +39,6 @@ def list_of_list_to_array(l):
 	l2 = np.array(l1)
 	print(l2.shape)
 	return l2
-
-
-'''
-# metrics
-from sklearn.metrics import SCORERS
-l = list(SCORERS.keys())
-l.sort()
-'''
-
-# # Mount GDrive and attach it to the colab for data I/O
-# from google.colab import drive
-# drive.mount('/content/drive')
-# data_folder = '/content/drive/My Drive/ML4HC_Final_Project/data/input/feature_extraction/'
-# data_folder = './../../datum/reddit/input/feature_extraction/'
-
-# subreddits = ['EDAnonymous', 'addiction', 'adhd', 'alcoholism', 'anxiety',
-#  'bipolarreddit', 'bpd',  'depression',  'healthanxiety',
-#        'jokes', 'legaladvice', 'meditation', 'mentalhealth',
-#        'mentalillness', 'mindfulness', 'paranoia',
-#        'personalfinance','ptsd', 'schizophrenia', 'socialanxiety',
-#        'suicidewatch']
-
-
-
-
-
-
-def heatmap_probs(matrix, subreddits, days):
-	'''
-	:param df:
-	:param subreddits:
-	:param days:
-	:return:
-
-	# Simulation:
-
-	import random
-	df = []
-	for i in np.arange(0.005,0.5,0.05)[:len(rows)]:
-		print(i)
-		df.append(list(np.random.normal(i, 0.1, size=len(cols))))
-
-	'''
-	import seaborn as sns
-	import matplotlib.pyplot as plt
-
-	df = pd.DataFrame(matrix, index=subreddits, columns=days)
-	# # simulation
-	# df.iloc[4,11:] = np.random.normal(0.6, 0.05, size=8)
-	# df.iloc[-1,11:] = np.random.normal(0.2, 0.05, size=8)
-
-	# clean
-	cols = list(df.columns)
-	cols = [n.replace('2020/', '') for n in cols]
-	df.columns = cols
-
-	sns.heatmap(df)
-	plt.tight_layout()
-	plt.savefig('./data/toy_prediction.png', epi=200)
-	return df
-
-'''
-from importlib import reload
-reload(config)
-
-'''
-
-#
-# def stemming_tokenizer(str_input):
-# 	'''
-# 	http://jonathansoma.com/lede/algorithms-2017/classes/more-text-analysis/counting-and-stemming/
-#
-# 	:param str_input:
-# 	:return:
-# 	'''
-# 	words = re.sub(r"[^A-Za-z0-9\-]", " ", str_input).lower().split()
-# 	words = [porter_stemmer.stem(word) for word in words]
-# 	return words
 
 
 def final_model(X_train, y_train, X_test, y_test,run_modelN, subreddit, subreddits,features,output_dir, parameters=None,append_to_name=None):
@@ -159,13 +64,8 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, subreddit, subreddi
 	if append_to_name:
 		model_name += '_'+append_to_name
 
-
 	df.to_csv(output_dir + 'report_{}.csv'.format(model_name), index_label=0)
 	df.to_latex(output_dir + 'report_latex_{}'.format(model_name))
-	# with open(output_dir + model_name + '_params.txt_{}'.format(model_name), 'a+') as f:
-	# 	f.write(str(model_and_params))
-
-	# (n_classes, n_features)
 
 	if 'SVC' in model_name or 'SVM' in model_name or 'SGD' in model_name:
 		coefs = pipeline['clf'].coef_
@@ -177,8 +77,6 @@ def final_model(X_train, y_train, X_test, y_test,run_modelN, subreddit, subreddi
 			coefs_df.columns = subreddits
 		coefs_df.index = features
 		coefs_df.to_csv(output_dir + 'coefs_df_{}.csv'.format(model_name))
-
-
 
 
 		if len(subreddits)>2:
@@ -214,7 +112,6 @@ def df_to_X(reddit_data, task='binary'):
 	print('double check features: ', features)
 
 	# Build X
-	# docs =· todo for tfidf
 	docs_all = [] #for tfidf
 	X = []
 	y = []
@@ -237,22 +134,18 @@ def df_to_X(reddit_data, task='binary'):
 
 
 	X, y, docs_all = list_of_list_to_array(X),list_of_list_to_array(y),list_of_list_to_array(docs_all)
-	le = preprocessing.LabelEncoder()
 
 	# Make sure 'control' is always 0
 	try:
 		y = np.array([n.replace('control', '0') for n in y])
 	except: pass
-
+	le = preprocessing.LabelEncoder()
 	y_encoded = le.fit_transform(y)
 
 	# Split
 	X_train, X_test, y_train, y_test, docs_train, docs_test  = train_test_split(X, y_encoded, docs_all,test_size=0.20, random_state=seed_value)
 	return X_train, X_test, y_train, y_test, docs_train, docs_test, features
 
-
-
-import datetime
 
 def df_to_X_midpandemic(df, timestep = None,filter_days = ['2020/03/11', '2020/04/20'], subreddit = 'COVID19_support'):
 
@@ -311,73 +204,54 @@ def df_to_X_midpandemic(df, timestep = None,filter_days = ['2020/03/11', '2020/0
 
 
 
-
-
-
-
 if __name__ == "__main__":
 	# Config
 	import config
 	input_dir = config.input_dir
 	output_dir = config.output_dir
-	# hyperparams = config.hyperparams
 	model = config.model
-
 	run_version_number = config.run_version_number
 	subreddits = config.subreddits
 	cv = int(config.cv)
-
 	subsample = int(config.subsample)
 	include_subreddits_overN = int(config.include_subreddits_overN)
-
 	run_modelN = int(config.run_modelN)
-	# mkdir output dir and logger
 	run_final_model = config.run_final_model
-
-
 	dim_reduction = config.dim_reduction
 	task = config.task
 	midpandemic_train = config.midpandemic_train
 	midpandemic_test = config.midpandemic_test
 	subsample_midpandemic_test =  config.subsample_midpandemic_test
-	# subsample_midpandemic = config.subsample_midpandemic
-	# subsample_controls = config.subsample_controls
 	pre_or_post = config.pre_or_post
 	timestep = config.timestep
 
+	# Load data
+	# ===========================================================================
 	subreddit = subreddits[config.subredditN]
-
 	if run_final_model:
 		output_dir = data_helpers.make_output_dir(output_dir, name='run_final_model_v{}_model{}_{}'.format(run_version_number, run_modelN, subreddit))
 	else:
 		output_dir = data_helpers.make_output_dir(output_dir, name='run_gridsearch_v{}_model{}_{}'.format(run_version_number, run_modelN, subreddit))
 
-	#
-	# # Load data
-	# print('===loading data====')
-	# if model in ['lstm', 'gru', 'bi-lstm', 'bi-gru']:
-	# 	# todo
-	# 	pass
-	# else:
-	# # 	vector models
 	if task == 'binary':
-		reddit_data = load_reddit.binary(input_dir, subreddit, subreddits,
-		                                 pre_or_post=pre_or_post, subsample=subsample )
+		reddit_data = load_reddit.binary(input_dir, subreddit, subreddits,pre_or_post=pre_or_post, subsample=subsample )
 
 		# Create additional test sets, 1 for same subreddit but of midpandemic data and 1 for COVID19
 		if midpandemic_test:
 			subreddits_midpandemic = subreddits+['COVID19_support']
 			midpandemic_test_data = load_reddit.multiclass(input_dir, subreddits_midpandemic ,
-			                            pre_or_post='post',subsample_midpandemic_test=subsample_midpandemic_test, days=(0, -1))
+			                            pre_or_post='post',subsample=subsample_midpandemic_test)
 
 
 	elif task == 'multiclass':
 		reddit_data = load_reddit.multiclass(input_dir, subreddits, pre_or_post = 'pre')
 
-	# Convert df to 
+
+
+	# Convert df to X,y
 	X_train, X_test, y_train, y_test, docs_train, docs_test, features = df_to_X(reddit_data, task)
 
-	
+
 	if midpandemic_test:
 		X_test_covid, y_test_covid, docs_test_covid= df_to_X_midpandemic(midpandemic_test_data , timestep=None,
 		                                                          filter_days=['2020/03/11', '2020/04/20'],
@@ -392,21 +266,18 @@ if __name__ == "__main__":
 	print('===loaded data====')
 
 	# Count
-	# days = np.unique(reddit_data.date)
-	# days.sort()
-	# days_train = days[:]
-	# reddit_data = reddit_data [reddit_data .date.isin(days_train)]
-	# counts = reddit_data.groupby(["subreddit", "date"]).size().reset_index(name='count')
-	# sr_all = []
-	# counts_all = []
-	# for sr in subreddits:
-	# 	counts_d = counts[counts.subreddit == sr].sum()
-	# 	print(sr, ': ', np.round(float(list(counts_d)[-1]), 2))
-	# 	sr_all.append(sr)
-	# 	counts_all.append(np.round(float(list(counts_d)[-1]), 2))
-
-	# from importlib import reload
-	# reload(extract_features)
+	days = np.unique(reddit_data.date)
+	days.sort()
+	days_train = days[:]
+	reddit_data = reddit_data [reddit_data .date.isin(days_train)]
+	counts = reddit_data.groupby(["subreddit", "date"]).size().reset_index(name='count')
+	sr_all = []
+	counts_all = []
+	for sr in subreddits:
+		counts_d = counts[counts.subreddit == sr].sum()
+		print(sr, ': ', np.round(float(list(counts_d)[-1]), 2))
+		sr_all.append(sr)
+		counts_all.append(np.round(float(list(counts_d)[-1]), 2))
 
 	# Extract tfidf
 	train_tfidf, test_tfidf, feature_names_tfidf = extract_features.tfidf(X_train_sentences=docs_train, X_test_sentences=docs_test,
@@ -435,7 +306,6 @@ if __name__ == "__main__":
 
 	# Run models
 	# ================================================================================
-
 	subreddits = list(np.unique(reddit_data.subreddit))
 	if task == 'binary':
 		subreddits = ['control', subreddit]
@@ -453,10 +323,6 @@ if __name__ == "__main__":
 		f.write(str(parameters))
 		f.write('\n')
 
-
-
-
-
 	if run_final_model:
 		final_model(X_train, y_train, X_test, y_test,run_modelN, subreddit, subreddits,features,output_dir)
 
@@ -471,28 +337,18 @@ if __name__ == "__main__":
 	else:
 		# Hyperparameter tuning
 		# ========================================================================
-
-
 		if dim_reduction:
 			pipeline = Pipeline([
 				('normalization', None),
 				('umap', umap.UMAP(n_components=2, min_dist=0.1, metric='correlation', random_state=seed_value)),
 				('clf', switcher.ClfSwitcher()),
 			])
-
-
 		else:
 			pipeline = Pipeline([
 				('normalization', None),
 				('feature_selection', SelectKBest()),
 				('clf', switcher.ClfSwitcher()),
 			])
-
-
-		# models_all = []
-		# results_all = []
-		# best_params_all = []
-		# best_score_all = []
 
 		for i, model_and_params in enumerate(parameters):
 			if i!= run_modelN:
@@ -501,26 +357,13 @@ if __name__ == "__main__":
 			gscv = GridSearchCV(pipeline, model_and_params, cv=cv, n_jobs=-1, return_train_score=False, verbose=0,
 		                    scoring='f1_weighted')
 			gscv.fit(X_train, y_train)
-
-
 			results = pd.DataFrame(gscv.cv_results_)
 			print('=======================================================\n')
-
 			print(gscv.best_params_)
 			print(gscv.best_score_)
 			print('=====================\n')
-
-
-			# models_all.append(gscv)
-			# results_all.append(results)
-			# best_params_all.append(gscv.best_params_)
-			# best_score_all.append(gscv.best_score_)
-
-
 			model_name= str(results.param_clf__estimator[0]).split('(')[0]
 			model_name = model_name.replace('[','')
-
-			# joblib.dump(gscv.best_estimator_, output_dir + '{}.pkl'.format(model_name))
 
 			with open(output_dir+model_name+'.txt', 'a+') as f:
 				f.write('\n=======================================================\n')
@@ -530,9 +373,4 @@ if __name__ == "__main__":
 				f.write('\n=======================================================\n')
 
 			results.to_csv(output_dir+model_name+'.csv',index_label=0)
-
-			# cm = confusion_matrix(y_test, y_pred, labels=np.unique(y_test), sample_weight=None)
-			# pd.DataFrame(cm).to_csv(output_dir + 'confusion_matrix.csv')
-
-
 
