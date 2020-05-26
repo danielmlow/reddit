@@ -10,28 +10,29 @@ def subsample_df(df, subsample=False):
 	df2 = df.loc[np.random.choice(df.index,subsample, replace=False)]
 	return df2
 
-def multiclass(input_dir, subreddits, pre_or_post = 'pre', subsample=None):
-	reddit_data = pd.read_csv(input_dir +subreddits[0]+'_{}_features.csv'.format(pre_or_post), index_col=False)
+
+def fix(df, subreddit='', subsample=3000):
 	# remove author duplicates and shuffle so we dont keep only first posts in time
-	reddit_data = reddit_data.sample(frac=1)
+	reddit_data = df.sample(frac=1)
 	reddit_data = reddit_data.drop_duplicates(subset='author', keep='first')
+	reddit_data  = reddit_data [~reddit_data.author.str.contains('|'.join(['bot', 'BOT', 'Bot']))] # There is at least one bot per subreddit
+	reddit_data = reddit_data[~reddit_data.post.str.contains('|'.join(['quote', 'QUOTE', 'Quote']))] # Remove posts in case quotes are long
 	reddit_data = reddit_data.reset_index(drop=True)
-	print('before:', subreddits[0], reddit_data.shape)
+
+	print('before:', subreddit, reddit_data.shape)
 	if subsample:
 		reddit_data = subsample_df(reddit_data, subsample=subsample)
-		print('after:', subreddits[0], reddit_data.shape)
+		print('after:', subreddit, reddit_data.shape)
+	return reddit_data
+
+
+def multiclass(input_dir, subreddits, pre_or_post = 'pre', subsample=None):
+	reddit_data = pd.read_csv(input_dir +subreddits[0]+'_{}_features.csv'.format(pre_or_post), index_col=False)
+	reddit_data = fix(reddit_data,subreddits[0], subsample=subsample)
 
 	for i in np.arange(1, len(subreddits)):
 		new_data = pd.read_csv(input_dir+subreddits[i]+'_{}_features.csv'.format(pre_or_post))
-		# remove author duplicates and shuffle so we dont keep only first posts in time
-		new_data = new_data.sample(frac=1)
-		new_data = new_data.drop_duplicates(subset='author', keep='first')
-		new_data = new_data.reset_index(drop=True)
-		print('before:', subreddits[i], new_data.shape)
-		if subsample:
-			new_data = subsample_df(new_data, subsample=subsample)
-			print('after:',subreddits[i], new_data.shape)
-
+		new_data = fix(new_data,subreddits[i], subsample=subsample)
 		reddit_data = pd.concat([reddit_data, new_data], axis=0)
 
 	return reddit_data
