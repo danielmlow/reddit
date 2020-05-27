@@ -124,10 +124,11 @@ def psych_profiler(input_dir, test_set='_covid19', model=0,model_name='SGDClassi
 if __name__ == "__main__":
 
 
-
+	# Change path and model used for subsequent analyses
 	input_dir = './../../datum/reddit/output/binary7_all_models/'
 	highest_performing_model = 2
 
+	# Run
 	models = range(0,5)
 	model_names = {0:'SGDClassifier',
 	               1:'SGDClassifier',
