@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 #SBATCH --job-name=reddit_umap
-#SBATCH --array=1-6
-#SBATCH --time=09:00:00
+#SBATCH --array=1-50
+#SBATCH --time=03:00:00
 #SBATCH -N 1
-#SBATCH -c 12
-#SBATCH --mem=15GB
+#SBATCH -c 8
+#SBATCH --mem=10GB
 #SBATCH -o ./../../datum/reddit/output/slurm/slurm-%A_%a.out
 
 echo "now processing task id:: " ${SLURM_ARRAY_TASK_ID}

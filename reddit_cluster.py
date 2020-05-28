@@ -23,9 +23,6 @@ from sklearn.metrics import silhouette_score
 # In[ ]:
 
 
-import argparse
-
-
 
 def str2boolean(s):
 	if s == 'False':
@@ -34,20 +31,24 @@ def str2boolean(s):
 		s_new = True
 	return s_new
 
+
+# In[ ]:
+
+
+import argparse
 toy=False
 sample = 0
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--job_array_task_id',
                     help='default: ${SLURM_ARRAY_TASK_ID} or 1. When using job arrays, this will be set by the bash script by ${SLURM_ARRAY_TASK_ID} or set to 1, which will be substracted below by 1 for zero indexing')
-
-parser.add_argument('--toy', help='run quickly with less parameters')
+parser.add_argument('--toy', help='run quickly with less labels, parameters and splits')
 
 args = parser.parse_args()
 if args.job_array_task_id != None:
 	sample = int(args.job_array_task_id) - 1
-
-if args.toy != None:
+    
+if args.toy!=None:
 	toy = str2boolean(args.toy)
 
 
@@ -85,12 +86,12 @@ def load_obj(path):
         return pickle.load(f)
 
 
-# In[39]:
+# In[175]:
 
 
 # data_folder = '/content/drive/My Drive/ML4HC_Final_Project/data/input/'
 data_folder = './../../datum/reddit/input/'
-output_dir = './../../datum/reddit/output/umap/'
+output_dir = './../../datum/reddit/output/umap_v2/'
 
 
 # In[ ]:
@@ -109,14 +110,15 @@ try: os.mkdir(output_dir)
 except: pass
 
 
-# In[5]:
+# In[199]:
 
 
-plt.style.use('seaborn-bright')
-plt.figure(figsize=(10, 8), dpi= 80, facecolor='w', edgecolor='k')
+# plt.style.use('seaborn')
+plt.figure(figsize=(12,12), dpi= 80, facecolor='w', edgecolor='k')
+sns.palplot(sns.color_palette("husl", 14))
 
 
-# In[6]:
+# In[200]:
 
 
 def unison_shuffled_copies(a, b, c):
@@ -128,14 +130,18 @@ def unison_shuffled_copies(a, b, c):
     return a[p], b[p], c[p]
 
 
-# In[7]:
+# In[222]:
 
 
-def scatter_plot(X_reduced, y, color_code, method, annotate = False, title = 'title', savefig = False,
+def scatter_plot(X_reduced, y, color_code, method, annotate = False, title = 'title', savefig_path = False,
                  centers= None, dists=None):
 
     plt.clf()
+    sns.set_style("whitegrid", {'axes.grid' : False})
+    plt.figure(figsize=(12,12), dpi= 80, facecolor='w', edgecolor='k')
+    palette =   sns.color_palette("husl", len(np.unique(y)))
     # Shuffle
+#     plt.style.use('seaborn-bright')
     X_reduced, y, color_code = unison_shuffled_copies(X_reduced, y, color_code)
 
     # plot     
@@ -147,8 +153,17 @@ def scatter_plot(X_reduced, y, color_code, method, annotate = False, title = 'ti
     color_order = np.unique(y)
     print(color_order)
 #     color_order.sort()
-    facet = sns.lmplot(data=data, x='x', y='y', hue='label', hue_order=color_order,
-                   fit_reg=False, legend=True, legend_out=True, palette = 'colorblind', scatter_kws={"s": 1})
+
+    g = sns.lmplot(data=data, x='x', y='y', hue='label', hue_order=color_order,
+                   fit_reg=False, legend=True,palette=palette, legend_out=True, scatter_kws={"s": 10})
+    
+#     plt.setp(g._legend.get_texts(), fontsize=20)
+
+#     for ax in g.axes.flat:
+#         plt.setp(ax.get_legend().get_texts(), fontsize=22)  # for legend text
+
+    
+#     plt.setp(facet.get_legend().get_texts(), fontsize='20')
 #     scatter = plt.scatter(X_reduced[:, 0], X_reduced[:, 1],c=c, alpha=0.6, s=1,cmap='Spectral')
 #     label_names = [str(n) for n in np.unique(y)] 
 #     label_names.sort()
@@ -168,20 +183,24 @@ def scatter_plot(X_reduced, y, color_code, method, annotate = False, title = 'ti
     # missing one line     
     # plt.plot(centers[:,0],centers[:,1], color = 'dodgerblue', linewidth=0.5) # this works    
             
-        
+#     plt.tight_layout()    
     if title:
         plt.title(title)
-    if savefig:
-        plt.savefig('./data/'+title.replace('/', '-')+'.png', dpi=150)
-    plt.show()
+    
+    if savefig_path:
+        print('plotting...')
+        timestamp = datetime.datetime.now().isoformat()
+        plt.savefig(savefig_path+title+f'_{timestamp}.png', dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
 
 
-# In[8]:
+# In[212]:
 
 
 def run_umap(X=None, y=None, method = 'unsupervised', scaler=None, neighbor = 10, dist=0.1, metric='correlation', 
              color_code = None, annotate_names = None, annotate = False, test_set = True, title=None, 
-             savefig = False, X_test=None, y_test=None, color_code_test = None, plot=True):
+             savefig_path = False, X_test=None, y_test=None, color_code_test = None, plot=True):
     
     reducer = umap.UMAP(n_components=dimension, n_neighbors = neighbor, min_dist=dist,metric=metric,random_state=seed_value) #, TSNE(n_components=k, random_state=seed_value), PCA(n_components=k, random_state=seed_value)]
     reducer_name = 'umap' #, 'tsne', 'pca']
@@ -221,12 +240,12 @@ def run_umap(X=None, y=None, method = 'unsupervised', scaler=None, neighbor = 10
         assert dimension == 2 
         if method == 'metric_learning':
             # train: first time point
-            scatter_plot(X_reduced, y, color_code, method, annotate = annotate, title = 'First time step (train set)', savefig = savefig )
+            scatter_plot(X_reduced, y, color_code, method, annotate = annotate, title = 'First time step (train set)', savefig_path = savefig_path )
             # test: next time points            
-            scatter_plot(X_reduced_test, y_test, color_code_test, method, annotate = annotate, title = title, savefig = savefig )
+            scatter_plot(X_reduced_test, y_test, color_code_test, method, annotate = annotate, title = title, savefig_path = savefig_path )
             
         else:
-            scatter_plot(X_reduced, y, color_code, method, annotate = annotate, title = title, savefig = savefig, centers=centers)
+            scatter_plot(X_reduced, y, color_code, method, annotate = annotate, title = title, savefig_path = savefig_path, centers=centers)
     if method == 'metric_learning':
         return X_reduced, X_reduced_test
     else:
@@ -253,7 +272,7 @@ def gridsearch_sets(metrics, n_neighbors, min_dist, n_dimensions, scalers, repea
     return gridsearch
 
 
-# In[9]:
+# In[209]:
 
 
 
@@ -376,25 +395,32 @@ def load_reddit(subreddits, data_folder='./', subsample = 5600,pre_or_post = 'pr
 import datetime
 
 
-# In[42]:
+# In[229]:
 
 
 # Plot 2D for each timestep
 
-results = {}
-sample_sizes = [3000,3000,3000,0.1,0.5, False]
-sample_names = ['3000_0','3000_1','3000_2','1','5', 'all']
+plot=True
+
+repeat_n = 50
+sample_sizes = [3000] * repeat_n
+sample_names = [f'3000_{n}' for n in range(repeat_n)]
+
 if toy:
-    sample_sizes = [100,0.01]
-    sample_names = ['100','01']
+    repeat_n = 2
+    sample_sizes = [50] * repeat_n
+    sample_names = [f'50_{n}' for n in range(repeat_n)]
 
 #     defined through argparse
 i = sample_sizes[sample]
 name = sample_names[sample]
-    
+savefig_path = output_dir+f'run_{name}_'
+
 # for i, name in zip(sample_sizes, sample_names):
 print('\n\n{} =========================================='.format(i))
+results = {}
 results_i = []
+results_i_dists = []
 reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = i,pre_or_post = 'pre')
 features = list(reddit_data.columns)
 features = [n for n in features if n not in ['subreddit','author','date','post']]
@@ -403,8 +429,6 @@ X = reddit_data[features].values
 y = reddit_data.subreddit.values
 
 method = 'supervised'# 'metric_learning', 'supervised', 'unsupervised'
-savefig = False
-plot=False
 annotate = False
 annotate_names = False
 run_Ntimesteps = 1# len(X)#len(X) #1,2 ... len(X) 
@@ -413,9 +437,9 @@ color_code = y.copy()
 
 # Set up gridsearch
 n_dimensions =  [2,] #4,8,16,32,64,128] # https://umap-learn.readthedocs.io/en/latest/parameters.html
-n_neighbors = [100,200] #[50,100,200] # CANNOT USE MORE THAN N participants, default=10 Lower values seem to work better in 2D. This means that low values of n_neighbors will force UMAP to concentrate on very local structure
-min_dist = [0, 0.1]  # default=0.1. Lower values seem to work better in 2D. controls how tightly UMAP is allowed to pack points together. Larger values of min_dist will prevent UMAP from packing point together and will focus instead on the preservation of the broad topological structure instead.
-metrics = ['euclidean', 'cosine'] #,'cosine'] # cosine adds points?
+n_neighbors = [200] #[50,100,200] # CANNOT USE MORE THAN N participants, default=10 Lower values seem to work better in 2D. This means that low values of n_neighbors will force UMAP to concentrate on very local structure
+min_dist = [0]  # default=0.1. Lower values seem to work better in 2D. controls how tightly UMAP is allowed to pack points together. Larger values of min_dist will prevent UMAP from packing point together and will focus instead on the preservation of the broad topological structure instead.
+metrics = ['cosine'] #,'cosine'] # cosine adds points?
 repeat_n = 1
 repeat = [1]*repeat_n # to check how much randomness is affecting results, one can repeat
 scalers = [StandardScaler()]
@@ -424,11 +448,11 @@ gridsearch= gridsearch_sets(metrics, n_neighbors, min_dist, n_dimensions, scaler
 for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
     print('\n{} out of {}'.format(j, len(gridsearch)))
     print('====metric: {},  {} neighbor (low=maintain local structure),  {} dist (low=tightly packed),  {}D======'.format(metric,neighbor,dist,dimension))
-    title = '{} metric, neighbor {}, {} dist'.format(metric,neighbor,dist)
+    title = '{}_metric_{}_neighbor_{}_dist'.format(metric,neighbor,dist)
     print('running umap...')         
     X_reduced, centers, centers_labels  = run_umap(X = X, y = y, method = method, scaler=  scaler, neighbor = neighbor , dist=dist, metric=metric, 
         color_code = color_code, annotate_names = annotate_names, annotate = annotate, title=title,
-        savefig = savefig, plot = plot)
+        savefig_path = savefig_path, plot = plot)
 
     print('runnning metrics')
     # compute distances
@@ -440,14 +464,19 @@ for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
     # Compute convex hull
     hull = ConvexHull(centers)
     hull_area = hull.volume #volume is area in 2D
-    results_i.append([metric,neighbor,dist,sil_score, dists_df.mean().mean(),dists_df.mean().T['socialanxiety'],dists_df.mean().T['suicidewatch'], hull_area])
+    results_i.append([metric,neighbor,dist,sil_score, hull_area])
+    results_i_dists.append(dists_df)
 
 results_gs = pd.DataFrame(results_i)
-results_gs.columns = ['metric', 'neighbor','dist', 'sil_score', 'mean_dist', 'socialanxiety_dist', 'suicide_dist', 'convexhull']
+results_gs.columns = ['metric', 'neighbor','dist', 'sil_score','convexhull']
 results_gs = results_gs.sort_values('sil_score')
-results[name] = results_gs
+# results[name] = results_gs
 timestamp = datetime.datetime.now().isoformat()
-save_obj(results,output_dir+f'umap_gs_results_sample_{name}_{timestamp}.pkl')
+results_gs.to_csv(output_dir+f'run_{name}_umap_gs_params_scores_{timestamp}.csv')
+results_gs_dists = pd.concat(results_i_dists)
+results_gs_dists.to_csv(output_dir+f'run_{name}_umap_gs_dists_{timestamp}.csv', )
+
+# save_obj(results,output_dir+f'umap_gs_results_{name}_{timestamp}.pkl')
 
 
         
@@ -457,8 +486,63 @@ save_obj(results,output_dir+f'umap_gs_results_sample_{name}_{timestamp}.pkl')
 #         max_dist, avg_dist, min_dist = tri_dists.max(), tri_dists.mean(), tri_dists.min()
 
 
+# In[252]:
+
+
+results_gs_dists
+
+
+# In[99]:
+
+
+# all_results = []
+# files = os.listdir(output_dir)
+# for name in sample_names:
+#     filename = [n for n in files if f'_{name}_' in n][0]
+# #     filename = filename.replace('/', ":")
+#     results = load_obj(output_dir+filename)
+#     row = [name]+list(results.get(name).iloc[-1,:].values)
+#     all_results.append([
+#         row
+        
+#     ])
+
+# cols = ['sample']+list(results.get(name).columns)
+
+# # results_df = pd.DataFrame(results)
+# all_results = np.reshape(np.array(all_results), (6,9))
+# df = pd.DataFrame(all_results, columns = cols)
+# df = df.replace('cosine', 2)
+# df = df.replace('euclidean', 1)  
+# df[cols[1:]] = df[cols[1:]].apply(pd.to_numeric)
+
+
+# In[151]:
+
+
+# # fig=plt.figure(figsize=(18, 16), dpi= 80, facecolor='w', edgecolor='k')
+
+# fig, ax = plt.subplots(4,2, figsize=(12, 12))
+
+# # idx = [[0,0],[0,1],[1,0],[1,1],[2,0],[2,1],[3,0],[3,1],]
+
+# cols_len = len(cols[1:])
+# plt.figure(figsize=(10, 8), dpi= 80, facecolor='w', edgecolor='k')
+# for col,i in zip(cols[1:], range(cols_len)):
+#     df.plot(x="sample", y=col, kind="line", ax=ax.flat[i])
+# # plt.figure(figsize=(20,20))
+# fig.savefig(output_dir+'umap_gs')
+    
+
+
 # 
 # ## Build X, y by grouping data by timestep (e.g., per week)
+
+# In[ ]:
+
+
+
+
 
 # len(days)/10
 
