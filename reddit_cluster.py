@@ -86,7 +86,7 @@ def load_obj(path):
         return pickle.load(f)
 
 
-# In[175]:
+# In[256]:
 
 
 # data_folder = '/content/drive/My Drive/ML4HC_Final_Project/data/input/'
@@ -395,7 +395,40 @@ def load_reddit(subreddits, data_folder='./', subsample = 5600,pre_or_post = 'pr
 import datetime
 
 
-# In[229]:
+# In[411]:
+
+
+from scipy.spatial.distance import directed_hausdorff, euclidean
+
+
+def housedorff_distances(X,y, labels):
+    len_labels = len(labels)
+    # build empty df
+    pairwise_distances_housedorff = pd.DataFrame(np.zeros((len_labels, len_labels)) , columns = labels, index=labels)
+    # pairwise_distances_euclidean = pd.DataFrame(np.zeros((len_labels, len_labels)) , columns = labels, index=labels)                          
+
+    # Build df out of X
+    df = pd.DataFrame(X)
+    df.columns = ['x1', 'x2']
+    df['label'] = y
+
+    # Compute pairwise distance between labelled arrays 
+    for row in range(len_labels):
+        for col in range(len_labels):
+            label_a = labels[row]
+            label_b = labels[col]
+            label_a_values = df[df.label==label_a][['x1','x2']].values
+            label_b_values = df[df.label==label_b][['x1','x2']].values
+            dist_housedorff = directed_hausdorff(label_a_values,label_b_values)
+            pairwise_distances_housedorff.iloc[row,col]= dist_housedorff[0]
+    #         dist_euclidean = euclidean(label_a_values.mean(axis=0),label_b_values.mean(axis=0))
+    #         pairwise_distances_euclidean.iloc[row,col]= dist_euclidean
+
+
+    return pairwise_distances_housedorff
+
+
+# In[412]:
 
 
 # Plot 2D for each timestep
@@ -407,7 +440,7 @@ sample_sizes = [3000] * repeat_n
 sample_names = [f'3000_{n}' for n in range(repeat_n)]
 
 if toy:
-    repeat_n = 2
+    repeat_n = 1
     sample_sizes = [50] * repeat_n
     sample_names = [f'50_{n}' for n in range(repeat_n)]
 
@@ -420,7 +453,8 @@ savefig_path = output_dir+f'run_{name}_'
 print('\n\n{} =========================================='.format(i))
 results = {}
 results_i = []
-results_i_dists = []
+results_i_dists = [] #euclidean
+results_i_dists_housedorff = []
 reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = i,pre_or_post = 'pre')
 features = list(reddit_data.columns)
 features = [n for n in features if n not in ['subreddit','author','date','post']]
@@ -454,10 +488,12 @@ for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
         color_code = color_code, annotate_names = annotate_names, annotate = annotate, title=title,
         savefig_path = savefig_path, plot = plot)
 
-    print('runnning metrics')
-    # compute distances
+    print('runnning metrics...')
+    # compute euclidean distances
     dists = euclidean_distances(centers)
     dists_df = pd.DataFrame(dists, columns = centers_labels, index=centers_labels)
+    # Housedorff distance
+    dists_df_housedorff = housedorff_distances(X_reduced,y, subreddits)
     # Compute silhouette score
     sil_score = silhouette_score(X_reduced, y)
 
@@ -466,6 +502,7 @@ for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
     hull_area = hull.volume #volume is area in 2D
     results_i.append([metric,neighbor,dist,sil_score, hull_area])
     results_i_dists.append(dists_df)
+    results_i_dists_housedorff.append(dists_df_housedorff)
 
 results_gs = pd.DataFrame(results_i)
 results_gs.columns = ['metric', 'neighbor','dist', 'sil_score','convexhull']
@@ -473,48 +510,192 @@ results_gs = results_gs.sort_values('sil_score')
 # results[name] = results_gs
 timestamp = datetime.datetime.now().isoformat()
 results_gs.to_csv(output_dir+f'run_{name}_umap_gs_params_scores_{timestamp}.csv')
+# euclidean
 results_gs_dists = pd.concat(results_i_dists)
 results_gs_dists.to_csv(output_dir+f'run_{name}_umap_gs_dists_{timestamp}.csv', )
-
-# save_obj(results,output_dir+f'umap_gs_results_{name}_{timestamp}.pkl')
-
-
-        
-#         # Upper triangle
-#         tri_dists = dists[np.triu_indices(len(centers_labels), 1)]
-#         # Stats of upper triangle to measure overall convergence divergence
-#         max_dist, avg_dist, min_dist = tri_dists.max(), tri_dists.mean(), tri_dists.min()
+# housedorff
+results_gs_dists_housedorff = pd.concat(results_i_dists_housedorff)
+results_gs_dists_housedorff.to_csv(output_dir+f'run_{name}_umap_gs_dists_housedorff_{timestamp}.csv', )
 
 
-# In[252]:
-
-
-results_gs_dists
-
-
-# In[99]:
+# In[258]:
 
 
 # all_results = []
+
 # files = os.listdir(output_dir)
-# for name in sample_names:
-#     filename = [n for n in files if f'_{name}_' in n][0]
+# files
+
+
+# In[267]:
+
+
+# df = dists.copy()
+# df = df.sort_index()
+# df = df.reindex(sorted(df.columns), axis=1)
+# df
+
+
+# In[331]:
+
+
+# dists_all = []
+# ranked_index = []
+# files = os.listdir(output_dir)
+# files = [n for n in files if '_dists_' in n ]
+# for file in files:
 # #     filename = filename.replace('/', ":")
-#     results = load_obj(output_dir+filename)
-#     row = [name]+list(results.get(name).iloc[-1,:].values)
-#     all_results.append([
-#         row
+#     df = pd.read_csv(output_dir+file, index_col=0)
+#     df = df.sort_index()
+#     df = df.reindex(sorted(df.columns), axis=1)
+#     if len(np.unique(df.index)) < len(df.index):
+#         break
+#     dists_all.append(df.values)
+    
+#     df_mean_ranked = df.mean()
+#     df_mean_ranked = df_mean_ranked.sort_values(0)
+#     df_mean_ranked_index = list(df_mean_ranked.index)
+#     ranked_index.append(df_mean_ranked_index)
         
-#     ])
+# #     ])
 
-# cols = ['sample']+list(results.get(name).columns)
+# # cols = ['sample']+list(results.get(name).columns)
 
-# # results_df = pd.DataFrame(results)
-# all_results = np.reshape(np.array(all_results), (6,9))
-# df = pd.DataFrame(all_results, columns = cols)
-# df = df.replace('cosine', 2)
-# df = df.replace('euclidean', 1)  
-# df[cols[1:]] = df[cols[1:]].apply(pd.to_numeric)
+# # # results_df = pd.DataFrame(results)
+# # all_results = np.reshape(np.array(all_results), (6,9))
+# # df = pd.DataFrame(all_results, columns = cols)
+# # df = df.replace('cosine', 2)
+# # df = df.replace('euclidean', 1)  
+# # df[cols[1:]] = df[cols[1:]].apply(pd.to_numeric)
+
+
+# In[344]:
+
+
+# df_ranked_dist = pd.DataFrame(ranked_index).T
+# df_ranked_dist
+
+
+# In[347]:
+
+
+# # Replace with numbers
+# names = {}
+# for i, sr in enumerate(subreddits):
+#     names[sr] = i
+# names
+
+
+# In[376]:
+
+
+# df
+
+
+# In[388]:
+
+
+# # Replace
+# df = df_ranked_dist.copy()
+# df = df.replace(names, regex=True)
+
+# # Correlation between ranked order for each run
+# df_corr = df.corr(method='spearman')
+
+# upper_tri = np.tril(df_corr)
+# upper_tri = [n for n in upper_tri.flatten() if n != 0]
+# np.mean(upper_tri)
+
+
+# In[380]:
+
+
+# l  = [12,5,13,0,4,3,9,2,1,10,11,14]
+# temp = []
+# for i in range(50):
+#     temp.append(l)
+
+# temp1 = pd.DataFrame(temp).T
+# temp1.columns = range(50)
+# print(temp1)
+
+# # Correlation
+# df_corr = temp1.corr(method='spearman')
+
+# upper_tri = np.tril(df_corr)
+# upper_tri = [n for n in upper_tri.flatten() if n != 0]
+# np.mean(upper_tri)
+
+
+# ## Load results of 50 runs on 3000 samples and see variance
+
+# In[384]:
+
+
+# dists_all = np.array(dists_all)
+# dists_all_var = dists_all.std(axis=0)
+# dists_all_var = pd.DataFrame(dists_all_var)
+# dists_all_var.columns = subreddits
+# dists_all_var.index = subreddits
+# print('max:', dists_all_var.max().max())
+# dists_all_var
+
+
+# In[382]:
+
+
+# # Visually inspect how much they're moving
+
+# input_dir = './../../datum/reddit/output/umap_v2/'
+# frame_dur = 1.5
+
+# filenames = os.listdir(output_dir)
+# filenames = [n for n in filenames if '.png' in n ][::5]
+
+
+# import imageio
+
+# images = list(map(lambda filename: imageio.imread(input_dir+filename), filenames))
+# imageio.mimsave(input_dir+'supervised_umap.gif', images, format='GIF', duration=frame_dur)
+
+
+# In[360]:
+
+
+filenames
+
+
+# In[361]:
+
+
+
+
+
+# In[363]:
+
+
+
+
+
+# In[366]:
+
+
+# # Rank distance from all other and see if that is stable
+
+# runs_mean_index = []
+# for run in dists_all:
+#     run.mean().index
+#     runs_mean_index.append(run.mean().index)
+
+# runs_mean_index = np.array(runs_mean_index)
+# runs_mean_index
+
+
+# In[317]:
+
+
+# # Mean rank order
+# mean_dist_from_others = pd.DataFrame(cols.mean(axis=0), index = subreddits).T
 
 
 # In[151]:
@@ -533,6 +714,12 @@ results_gs_dists
 # # plt.figure(figsize=(20,20))
 # fig.savefig(output_dir+'umap_gs')
     
+
+
+# In[ ]:
+
+
+
 
 
 # 
@@ -854,17 +1041,20 @@ results_gs_dists
 
 # ## Output gif
 
-# input_dir = '/Users/danielmlow/Dropbox (MIT)/libs/reddit/data/timestep_{}/'.format(timestep)
-# filenames = os.listdir(input_dir)
-# # images = []
-# # for filename in filenames:
-# #     images.append(imageio.imread(input_dir+filename))
-# # imageio.mimsave(input_dir+'supervised.gif', images)
+# In[ ]:
 
-# import imageio
-# with imageio.get_writer(input_dir+'supervised.gif', mode='I') as writer:
-#     for filename in filenames:
-#         image = imageio.imread(input_dir+filename)
-#         writer.append_data(image)
+
+input_dir = '/Users/danielmlow/Dropbox (MIT)/libs/reddit/data/timestep_{}/'.format(timestep)
+filenames = os.listdir(input_dir)
+# images = []
+# for filename in filenames:
+#     images.append(imageio.imread(input_dir+filename))
+# imageio.mimsave(input_dir+'supervised.gif', images)
+import imageio
+with imageio.get_writer(input_dir+'supervised.gif', mode='I') as writer:
+    for filename in filenames:
+        image = imageio.imread(input_dir+filename)
+        writer.append_data(image)
+
 
 # 
