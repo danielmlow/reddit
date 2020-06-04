@@ -14,7 +14,7 @@ python3 reddit_cluster.py --job_array_task_id=${SLURM_ARRAY_TASK_ID} --toy=False
 
 echo 'Finished.'
 
-# python3 -i run.py --job_array_task_id=1 --run_version_number=6 --toy=True --dim_reduction=False --run_modelN=0
+# python3 -i reddit_cluster.py --job_array_task_id=1 --toy=True --pre_or_post='pre'
 # tesla-k20:2
 # GEFORCEGTX1080TI:4
 # --gres=gpu:1

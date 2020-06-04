@@ -475,7 +475,7 @@ def hausdorff_distances(X,y, labels):
 if pre_or_post == 'pre':
     subsample = 2700
     subreddits_pre = subreddits.copy()
-    reddit_data = load_reddit(subreddits_2019, data_folder=data_folder, subsample = subsample,pre_or_post = pre_or_post)
+    reddit_data = load_reddit(subreddits_pre, data_folder=data_folder, subsample = subsample,pre_or_post = pre_or_post)
 
 
 # In[34]:
