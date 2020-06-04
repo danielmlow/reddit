@@ -5,7 +5,7 @@
 
 
 import os
-
+import argparse
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder
@@ -18,9 +18,10 @@ from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics import pairwise_distances_argmin_min
 from sklearn.metrics import silhouette_score
+from scipy.spatial import ConvexHull
 
 
-# In[ ]:
+# In[2]:
 
 
 
@@ -32,27 +33,39 @@ def str2boolean(s):
 	return s_new
 
 
-# In[ ]:
+# In[51]:
 
 
-import argparse
+
 toy=False
 sample = 0
+pre_or_post = 'pre'
+plot=False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--job_array_task_id',
                     help='default: ${SLURM_ARRAY_TASK_ID} or 1. When using job arrays, this will be set by the bash script by ${SLURM_ARRAY_TASK_ID} or set to 1, which will be substracted below by 1 for zero indexing')
+parser.add_argument('--plot', help='plot of each run')
 parser.add_argument('--toy', help='run quickly with less labels, parameters and splits')
+parser.add_argument('--pre_or_post', help='post, pre, 2019, 2018')
 
 args = parser.parse_args()
 if args.job_array_task_id != None:
 	sample = int(args.job_array_task_id) - 1
     
+if args.plot!=None:
+	plot = str2boolean(args.plot)
+    
 if args.toy!=None:
 	toy = str2boolean(args.toy)
 
+if args.toy!=None:
+	pre_or_post = str(args.pre_or_post)
 
-# In[2]:
+    
+
+
+# In[4]:
 
 
 
@@ -65,7 +78,7 @@ from numba.errors import NumbaPerformanceWarning
 warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 
 
-# In[3]:
+# In[5]:
 
 
 # # # Mount GDrive and attach it to the colab for data I/O
@@ -73,7 +86,7 @@ warnings.filterwarnings("ignore", category=NumbaPerformanceWarning)
 # drive.mount('/content/drive')
 
 
-# In[ ]:
+# In[6]:
 
 
 import pickle
@@ -86,15 +99,23 @@ def load_obj(path):
         return pickle.load(f)
 
 
-# In[256]:
+# In[48]:
+
+
+from datetime import datetime
+timestamp = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
+
+
+# In[50]:
 
 
 # data_folder = '/content/drive/My Drive/ML4HC_Final_Project/data/input/'
 data_folder = './../../datum/reddit/input/'
-output_dir = './../../datum/reddit/output/umap_v2/'
+output_dir = f'./../../datum/reddit/output/umap_cluster_{pre_or_post}_{timestamp}/'
+print(output_dir)
 
 
-# In[ ]:
+# In[8]:
 
 
 subreddits_2020 = ['COVID19_Support', 'personalfinance','relationships', 'addiction', 'EDAnonymous', 'adhd', 'autism', 'alcoholism', 'bipolarreddit', 'bpd','depression', 'anxiety',
@@ -103,14 +124,14 @@ subreddits = ['addiction', 'EDAnonymous', 'adhd', 'autism', 'alcoholism', 'bipol
 	              'healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 
 
-# In[40]:
+# In[9]:
 
 
 try: os.mkdir(output_dir)
 except: pass
 
 
-# In[199]:
+# In[10]:
 
 
 # plt.style.use('seaborn')
@@ -118,7 +139,7 @@ plt.figure(figsize=(12,12), dpi= 80, facecolor='w', edgecolor='k')
 sns.palplot(sns.color_palette("husl", 14))
 
 
-# In[200]:
+# In[11]:
 
 
 def unison_shuffled_copies(a, b, c):
@@ -130,7 +151,7 @@ def unison_shuffled_copies(a, b, c):
     return a[p], b[p], c[p]
 
 
-# In[222]:
+# In[12]:
 
 
 def scatter_plot(X_reduced, y, color_code, method, annotate = False, title = 'title', savefig_path = False,
@@ -195,7 +216,7 @@ def scatter_plot(X_reduced, y, color_code, method, annotate = False, title = 'ti
         plt.show()
 
 
-# In[212]:
+# In[13]:
 
 
 def run_umap(X=None, y=None, method = 'unsupervised', scaler=None, neighbor = 10, dist=0.1, metric='correlation', 
@@ -272,16 +293,15 @@ def gridsearch_sets(metrics, n_neighbors, min_dist, n_dimensions, scalers, repea
     return gridsearch
 
 
-# In[209]:
+# In[14]:
 
 
 
-from scipy.spatial import ConvexHull
 
 
 # ## Load data with our without subsampling
 
-# In[10]:
+# In[15]:
 
 
 # subreddits = ['EDAnonymous', 'addiction', 'adhd', 'alcoholism', 'anxiety',
@@ -292,7 +312,7 @@ from scipy.spatial import ConvexHull
 #        'suicidewatch']
 
 
-# In[11]:
+# In[16]:
 
 
 
@@ -312,7 +332,7 @@ def subsample_df(df, subsample):
 #   return df
 
 
-# In[34]:
+# In[27]:
 
 
 # 
@@ -333,13 +353,13 @@ def load_reddit(subreddits, data_folder='./', subsample = 5600,pre_or_post = 'pr
     subreddits.sort()
     # Main features
     # Load first subreddit to build DF
-    reddit_data = pd.read_csv(data_folder + 'feature_extraction/'+subreddits[0]+'_{}_features.csv'.format(pre_or_post), index_col=False)        
+    reddit_data = pd.read_csv(data_folder + 'feature_extraction/new/tfidf_combined/'+subreddits[0]+'_{}_features_tfidf_256.csv'.format(pre_or_post), index_col=False)        
     #     Clean
     reddit_data = clean(reddit_data)
     
     # Concat tfidf features
-    reddit_data_tfidf = pd.read_csv(data_folder + 'tfidf_vector/'+subreddits[0]+'_{}_tfidf256.csv'.format(pre_or_post), index_col=False)
-    reddit_data = reddit_data.merge(reddit_data_tfidf) ##inner is default, will elimante rows not shared on shared cols (post, author, etc, date)\n",
+#     reddit_data_tfidf = pd.read_csv(data_folder + 'tfidf_vector/'+subreddits[0]+'_{}_tfidf256.csv'.format(pre_or_post), index_col=False)
+#     reddit_data = reddit_data.merge(reddit_data_tfidf) ##inner is default, will elimante rows not shared on shared cols (post, author, etc, date)\n",
 
     # remove jan and feb data from covid19_support because there's not enough data and if not kmeans will assign two centroids to another larger subreddit
     days = np.unique(reddit_data.date)
@@ -358,12 +378,12 @@ def load_reddit(subreddits, data_folder='./', subsample = 5600,pre_or_post = 'pr
     for i in np.arange(1, len(subreddits)):
         print('===')
         print(subreddits[i])
-        new_data = pd.read_csv(data_folder + 'feature_extraction/'+subreddits[i]+'_{}_features.csv'.format(pre_or_post), index_col=False)
+        new_data = pd.read_csv(data_folder + 'feature_extraction/new/tfidf_combined/'+subreddits[i]+'_{}_features_tfidf_256.csv'.format(pre_or_post), index_col=False)
         # Clean
         new_data  = clean(new_data )
 
-        new_data_tfidf = pd.read_csv(data_folder + 'tfidf_vector/'+subreddits[i]+'_{}_tfidf256.csv'.format(pre_or_post), index_col=False)
-        new_data = new_data.merge(new_data_tfidf) ##inner is default, will elimante rows not shared on shared cols (post, author, etc, date)\n",
+#         new_data_tfidf = pd.read_csv(data_folder + 'tfidf_vector/'+subreddits[i]+'_{}_tfidf256.csv'.format(pre_or_post), index_col=False)
+#         new_data = new_data.merge(new_data_tfidf) ##inner is default, will elimante rows not shared on shared cols (post, author, etc, date)\n",
         if subreddits[i]=='COVID19_support' and pre_or_post == 'post':
               reddit_data = reddit_data[~reddit_data.date.isin(days_jan_feb)]
         print(new_data.shape)
@@ -375,7 +395,7 @@ def load_reddit(subreddits, data_folder='./', subsample = 5600,pre_or_post = 'pr
     return reddit_data
 
 
-# In[35]:
+# In[18]:
 
 
 # reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = 5600,pre_or_post = 'pre')
@@ -389,22 +409,22 @@ def load_reddit(subreddits, data_folder='./', subsample = 5600,pre_or_post = 'pr
 
 # ## Find optimal params (optimize on silhouette score)
 
-# In[36]:
+# In[19]:
 
 
 import datetime
 
 
-# In[411]:
+# In[20]:
 
 
 from scipy.spatial.distance import directed_hausdorff, euclidean
 
 
-def housedorff_distances(X,y, labels):
+def hausdorff_distances(X,y, labels):
     len_labels = len(labels)
     # build empty df
-    pairwise_distances_housedorff = pd.DataFrame(np.zeros((len_labels, len_labels)) , columns = labels, index=labels)
+    pairwise_distances_hausdorff = pd.DataFrame(np.zeros((len_labels, len_labels)) , columns = labels, index=labels)
     # pairwise_distances_euclidean = pd.DataFrame(np.zeros((len_labels, len_labels)) , columns = labels, index=labels)                          
 
     # Build df out of X
@@ -419,22 +439,70 @@ def housedorff_distances(X,y, labels):
             label_b = labels[col]
             label_a_values = df[df.label==label_a][['x1','x2']].values
             label_b_values = df[df.label==label_b][['x1','x2']].values
-            dist_housedorff = directed_hausdorff(label_a_values,label_b_values)
-            pairwise_distances_housedorff.iloc[row,col]= dist_housedorff[0]
+            dist_hausdorff = directed_hausdorff(label_a_values,label_b_values)
+            pairwise_distances_hausdorff.iloc[row,col]= dist_hausdorff[0]
     #         dist_euclidean = euclidean(label_a_values.mean(axis=0),label_b_values.mean(axis=0))
     #         pairwise_distances_euclidean.iloc[row,col]= dist_euclidean
 
 
-    return pairwise_distances_housedorff
+    return pairwise_distances_hausdorff
+
+
+# In[28]:
+
+
+# reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = False,pre_or_post = 'pre')
+
+
+# In[519]:
+
+
+# count = {}
+# for sr in subreddits:
+#     count_sr = reddit_data[reddit_data.subreddit==sr].shape[0]
+#     count[sr]=str(np.round(count_sr/1000,1))+'k'
+
+# count
+    
+
+
+# # Run 50 runs 
+
+# In[36]:
+
+
+# pre (2019 whole year) = 2700
+if pre_or_post == 'pre':
+    subsample = 2700
+    subreddits_pre = subreddits.copy()
+    reddit_data = load_reddit(subreddits_2019, data_folder=data_folder, subsample = subsample,pre_or_post = pre_or_post)
+
+
+# In[34]:
+
+
+# 2019 = 900
+if pre_or_post == '2019':
+    subsample = 900
+    subreddits_2019 = subreddits.copy()
+    reddit_data = load_reddit(subreddits_2019, data_folder=data_folder, subsample = subsample,pre_or_post = pre_or_post)
+
+
+# In[33]:
+
+
+# 2018 = 450 
+if pre_or_post == '2018':
+    subsample = 450
+    subreddits_2018 = subreddits.copy()
+    subreddits_2018.remove('EDAnonymous')
+    reddit_data = load_reddit(subreddits_2018, data_folder=data_folder, subsample = subsample,pre_or_post = pre_or_post)
 
 
 # In[412]:
 
 
-# Plot 2D for each timestep
-
-plot=True
-
+# Run
 repeat_n = 50
 sample_sizes = [3000] * repeat_n
 sample_names = [f'3000_{n}' for n in range(repeat_n)]
@@ -454,8 +522,8 @@ print('\n\n{} =========================================='.format(i))
 results = {}
 results_i = []
 results_i_dists = [] #euclidean
-results_i_dists_housedorff = []
-reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = i,pre_or_post = 'pre')
+results_i_dists_hausdorff = []
+# reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = i,pre_or_post = 'pre')
 features = list(reddit_data.columns)
 features = [n for n in features if n not in ['subreddit','author','date','post']]
 #   print('double check features: ',features)
@@ -492,8 +560,8 @@ for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
     # compute euclidean distances
     dists = euclidean_distances(centers)
     dists_df = pd.DataFrame(dists, columns = centers_labels, index=centers_labels)
-    # Housedorff distance
-    dists_df_housedorff = housedorff_distances(X_reduced,y, subreddits)
+    # hausdorff distance
+    dists_df_hausdorff = hausdorff_distances(X_reduced,y, subreddits)
     # Compute silhouette score
     sil_score = silhouette_score(X_reduced, y)
 
@@ -502,7 +570,7 @@ for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
     hull_area = hull.volume #volume is area in 2D
     results_i.append([metric,neighbor,dist,sil_score, hull_area])
     results_i_dists.append(dists_df)
-    results_i_dists_housedorff.append(dists_df_housedorff)
+    results_i_dists_hausdorff.append(dists_df_hausdorff)
 
 results_gs = pd.DataFrame(results_i)
 results_gs.columns = ['metric', 'neighbor','dist', 'sil_score','convexhull']
@@ -513,190 +581,173 @@ results_gs.to_csv(output_dir+f'run_{name}_umap_gs_params_scores_{timestamp}.csv'
 # euclidean
 results_gs_dists = pd.concat(results_i_dists)
 results_gs_dists.to_csv(output_dir+f'run_{name}_umap_gs_dists_{timestamp}.csv', )
-# housedorff
-results_gs_dists_housedorff = pd.concat(results_i_dists_housedorff)
-results_gs_dists_housedorff.to_csv(output_dir+f'run_{name}_umap_gs_dists_housedorff_{timestamp}.csv', )
+# hausdorff
+results_gs_dists_hausdorff = pd.concat(results_i_dists_hausdorff)
+results_gs_dists_hausdorff.to_csv(output_dir+f'run_{name}_umap_gs_dists_hausdorff_{timestamp}.csv', )
+# 
 
 
-# In[258]:
+# ## See how stable UMAP is across runs and resampling
 
+# # Visually inspect how much they're moving
+# 
+# input_dir = './../../datum/reddit/output/umap_v2/'
+# frame_dur = 1.5
+# 
+# filenames = os.listdir(output_dir)
+# filenames = [n for n in filenames if '.png' in n ][::5]
+# 
+# 
+# import imageio
+# 
+# images = list(map(lambda filename: imageio.imread(input_dir+filename), filenames))
+# imageio.mimsave(input_dir+'supervised_umap.gif', images, format='GIF', duration=frame_dur)
 
-# all_results = []
-
-# files = os.listdir(output_dir)
-# files
-
-
-# In[267]:
-
-
-# df = dists.copy()
-# df = df.sort_index()
-# df = df.reindex(sorted(df.columns), axis=1)
-# df
-
-
-# In[331]:
-
-
+# # Load distances for all runs to compute var and rank mean distance for each sr
 # dists_all = []
 # ranked_index = []
 # files = os.listdir(output_dir)
-# files = [n for n in files if '_dists_' in n ]
+# files = [n for n in files if '_dists_housedorff_' in n ]
 # for file in files:
-# #     filename = filename.replace('/', ":")
 #     df = pd.read_csv(output_dir+file, index_col=0)
 #     df = df.sort_index()
 #     df = df.reindex(sorted(df.columns), axis=1)
 #     if len(np.unique(df.index)) < len(df.index):
 #         break
 #     dists_all.append(df.values)
-    
+#     
 #     df_mean_ranked = df.mean()
 #     df_mean_ranked = df_mean_ranked.sort_values(0)
 #     df_mean_ranked_index = list(df_mean_ranked.index)
 #     ranked_index.append(df_mean_ranked_index)
-        
-# #     ])
-
-# # cols = ['sample']+list(results.get(name).columns)
-
-# # # results_df = pd.DataFrame(results)
-# # all_results = np.reshape(np.array(all_results), (6,9))
-# # df = pd.DataFrame(all_results, columns = cols)
-# # df = df.replace('cosine', 2)
-# # df = df.replace('euclidean', 1)  
-# # df[cols[1:]] = df[cols[1:]].apply(pd.to_numeric)
-
-
-# In[344]:
-
+# 
 
 # df_ranked_dist = pd.DataFrame(ranked_index).T
 # df_ranked_dist
-
-
-# In[347]:
-
 
 # # Replace with numbers
 # names = {}
 # for i, sr in enumerate(subreddits):
 #     names[sr] = i
 # names
-
-
-# In[376]:
-
-
-# df
-
-
-# In[388]:
-
-
+# 
 # # Replace
 # df = df_ranked_dist.copy()
 # df = df.replace(names, regex=True)
+# df
 
 # # Correlation between ranked order for each run
 # df_corr = df.corr(method='spearman')
-
+# 
 # upper_tri = np.tril(df_corr)
 # upper_tri = [n for n in upper_tri.flatten() if n != 0]
 # np.mean(upper_tri)
+# 
 
-
-# In[380]:
-
-
-# l  = [12,5,13,0,4,3,9,2,1,10,11,14]
-# temp = []
-# for i in range(50):
-#     temp.append(l)
-
-# temp1 = pd.DataFrame(temp).T
-# temp1.columns = range(50)
-# print(temp1)
-
-# # Correlation
-# df_corr = temp1.corr(method='spearman')
-
-# upper_tri = np.tril(df_corr)
-# upper_tri = [n for n in upper_tri.flatten() if n != 0]
-# np.mean(upper_tri)
-
+# # Test that the same order of numbers set randomly returns rho=1
+# # l  = [12,5,13,0,4,3,9,2,1,10,11,14]
+# # temp = []
+# # for i in range(50):
+# #     temp.append(l)
+# 
+# # temp1 = pd.DataFrame(temp).T
+# # temp1.columns = range(50)
+# # print(temp1)
+# 
+# # # Correlation
+# # df_corr = temp1.corr(method='spearman')
+# 
+# # upper_tri = np.tril(df_corr)
+# # upper_tri = [n for n in upper_tri.flatten() if n != 0]
+# # np.mean(upper_tri)
 
 # ## Load results of 50 runs on 3000 samples and see variance
 
-# In[384]:
+# count
 
+# subreddits_new = []
+# for sr in subreddits:
+#     name_new = sr+' '+count.get(sr)
+#     subreddits_new.append(name_new)
+# 
+# subreddits_new
 
 # dists_all = np.array(dists_all)
 # dists_all_var = dists_all.std(axis=0)
 # dists_all_var = pd.DataFrame(dists_all_var)
-# dists_all_var.columns = subreddits
-# dists_all_var.index = subreddits
+# dists_all_var.columns = subreddits_new
+# dists_all_var.index = subreddits_new
 # print('max:', dists_all_var.max().max())
 # dists_all_var
+# 
+# 
 
+# # heatmap with median and IRR as color
+# 
+# # Median
+# df_median = np.median(dists_all, axis=0)
+# df_median = pd.DataFrame(df_median)
+# df_median.columns = subreddits_new
+# df_median.index = subreddits_new
+# print('max:', df_median.max().max())
+# df_median
+# 
+# 
+# 
+# 
 
-# In[382]:
+# from scipy.stats import iqr
+# # IQR
+# df_iqr = iqr(dists_all, axis=0)
+# df_iqr = pd.DataFrame(df_iqr)
+# df_iqr.columns = subreddits_new
+# df_iqr.index = subreddits_new
+# print('max:', df_iqr.max().max())
+# df_iqr
 
+# df_iqr+df_iqr.T
 
-# # Visually inspect how much they're moving
+# 
 
-# input_dir = './../../datum/reddit/output/umap_v2/'
-# frame_dur = 1.5
+# sorted_iqr = list((df_iqr+df_iqr.T).sum().sort_values().index)
+# 
+# def reorder_index_cols(df, ordered_list):
+#     df = df.reindex(ordered_list)
+#     df = df[ordered_list]
+#     return df
+#     
+# df_median = reorder_index_cols(df_median, sorted_iqr)
+# df_iqr = reorder_index_cols(df_iqr, sorted_iqr)
+# 
+# 
+# 
 
-# filenames = os.listdir(output_dir)
-# filenames = [n for n in filenames if '.png' in n ][::5]
-
-
-# import imageio
-
-# images = list(map(lambda filename: imageio.imread(input_dir+filename), filenames))
-# imageio.mimsave(input_dir+'supervised_umap.gif', images, format='GIF', duration=frame_dur)
-
-
-# In[360]:
-
-
-filenames
-
-
-# In[361]:
-
-
-
-
-
-# In[363]:
-
-
-
-
-
-# In[366]:
-
-
-# # Rank distance from all other and see if that is stable
-
-# runs_mean_index = []
-# for run in dists_all:
-#     run.mean().index
-#     runs_mean_index.append(run.mean().index)
-
-# runs_mean_index = np.array(runs_mean_index)
-# runs_mean_index
-
-
-# In[317]:
-
-
-# # Mean rank order
-# mean_dist_from_others = pd.DataFrame(cols.mean(axis=0), index = subreddits).T
-
+# # Heatmap
+# sns.set(font_scale=0.7)
+# fontsize = 5
+# plt.figure(figsize=(30,15), dpi= 300, facecolor='w', edgecolor='k')
+# f, axes = plt.subplots(1, 2, sharey=True)
+# 
+# # plt.subplot(1, 2, 1)
+# ax = sns.heatmap(df_median, ax=axes[0], annot=True,annot_kws={"fontsize":fontsize}, cbar=False)
+# 
+# axes[0].title.set_text('Median')
+# axes[0].set(adjustable='box', aspect='equal')
+# 
+# bottom, top = ax.get_ylim()
+# ax.set_ylim(bottom + 0.5, top - 0.5)
+# 
+# # plt.subplot(1, 2, 2)
+# ax = sns.heatmap(df_iqr, ax=axes[1], annot=True, annot_kws={"fontsize":fontsize},cbar=False)
+# bottom, top = ax.get_ylim()
+# ax.set_ylim(bottom + 0.5, top - 0.5)
+# axes[1].title.set_text('IQR')
+# axes[1].set(adjustable='box', aspect='equal')
+# plt.tight_layout()
+# plt.savefig(output_dir+'heatmap_dists.png', dpi=300)
+# 
+# 
+# 
 
 # In[151]:
 
@@ -725,11 +776,7 @@ filenames
 # 
 # ## Build X, y by grouping data by timestep (e.g., per week)
 
-# In[ ]:
-
-
-
-
+# 
 
 # len(days)/10
 
@@ -824,6 +871,93 @@ filenames
 # #         # Stats of upper triangle to measure overall convergence divergence
 # #         max_dist, avg_dist, min_dist = tri_dists.max(), tri_dists.mean(), tri_dists.min()
 # 
+
+# # Plot 2D for each timestep
+# 
+# plot=True
+# 
+# repeat_n = 50
+# sample_sizes = [3000] * repeat_n
+# sample_names = [f'3000_{n}' for n in range(repeat_n)]
+# 
+# if toy:
+#     repeat_n = 1
+#     sample_sizes = [50] * repeat_n
+#     sample_names = [f'50_{n}' for n in range(repeat_n)]
+# 
+# #     defined through argparse
+# i = sample_sizes[sample]
+# name = sample_names[sample]
+# savefig_path = output_dir+f'run_{name}_'
+# 
+# # for i, name in zip(sample_sizes, sample_names):
+# print('\n\n{} =========================================='.format(i))
+# results = {}
+# results_i = []
+# results_i_dists = [] #euclidean
+# results_i_dists_hausdorff = []
+# reddit_data = load_reddit(subreddits, data_folder=data_folder, subsample = i,pre_or_post = 'pre')
+# features = list(reddit_data.columns)
+# features = [n for n in features if n not in ['subreddit','author','date','post']]
+# #   print('double check features: ',features)
+# X = reddit_data[features].values
+# y = reddit_data.subreddit.values
+# 
+# method = 'supervised'# 'metric_learning', 'supervised', 'unsupervised'
+# annotate = False
+# annotate_names = False
+# run_Ntimesteps = 1# len(X)#len(X) #1,2 ... len(X) 
+# color_code = y.copy()
+# 
+# 
+# # Set up gridsearch
+# n_dimensions =  [2,] #4,8,16,32,64,128] # https://umap-learn.readthedocs.io/en/latest/parameters.html
+# n_neighbors = [200] #[50,100,200] # CANNOT USE MORE THAN N participants, default=10 Lower values seem to work better in 2D. This means that low values of n_neighbors will force UMAP to concentrate on very local structure
+# min_dist = [0]  # default=0.1. Lower values seem to work better in 2D. controls how tightly UMAP is allowed to pack points together. Larger values of min_dist will prevent UMAP from packing point together and will focus instead on the preservation of the broad topological structure instead.
+# metrics = ['cosine'] #,'cosine'] # cosine adds points?
+# repeat_n = 1
+# repeat = [1]*repeat_n # to check how much randomness is affecting results, one can repeat
+# scalers = [StandardScaler()]
+# 
+# gridsearch= gridsearch_sets(metrics, n_neighbors, min_dist, n_dimensions, scalers, repeat)
+# for j, (metric,neighbor,dist,dimension,scaler, r) in enumerate(gridsearch):
+#     print('\n{} out of {}'.format(j, len(gridsearch)))
+#     print('====metric: {},  {} neighbor (low=maintain local structure),  {} dist (low=tightly packed),  {}D======'.format(metric,neighbor,dist,dimension))
+#     title = '{}_metric_{}_neighbor_{}_dist'.format(metric,neighbor,dist)
+#     print('running umap...')         
+#     X_reduced, centers, centers_labels  = run_umap(X = X, y = y, method = method, scaler=  scaler, neighbor = neighbor , dist=dist, metric=metric, 
+#         color_code = color_code, annotate_names = annotate_names, annotate = annotate, title=title,
+#         savefig_path = savefig_path, plot = plot)
+# 
+#     print('runnning metrics...')
+#     # compute euclidean distances
+#     dists = euclidean_distances(centers)
+#     dists_df = pd.DataFrame(dists, columns = centers_labels, index=centers_labels)
+#     # hausdorff distance
+#     dists_df_hausdorff = hausdorff_distances(X_reduced,y, subreddits)
+#     # Compute silhouette score
+#     sil_score = silhouette_score(X_reduced, y)
+# 
+#     # Compute convex hull
+#     hull = ConvexHull(centers)
+#     hull_area = hull.volume #volume is area in 2D
+#     results_i.append([metric,neighbor,dist,sil_score, hull_area])
+#     results_i_dists.append(dists_df)
+#     results_i_dists_hausdorff.append(dists_df_hausdorff)
+# 
+# results_gs = pd.DataFrame(results_i)
+# results_gs.columns = ['metric', 'neighbor','dist', 'sil_score','convexhull']
+# results_gs = results_gs.sort_values('sil_score')
+# # results[name] = results_gs
+# timestamp = datetime.datetime.now().isoformat()
+# results_gs.to_csv(output_dir+f'run_{name}_umap_gs_params_scores_{timestamp}.csv')
+# # euclidean
+# results_gs_dists = pd.concat(results_i_dists)
+# results_gs_dists.to_csv(output_dir+f'run_{name}_umap_gs_dists_{timestamp}.csv', )
+# # hausdorff
+# results_gs_dists_hausdorff = pd.concat(results_i_dists_hausdorff)
+# results_gs_dists_hausdorff.to_csv(output_dir+f'run_{name}_umap_gs_dists_hausdorff_{timestamp}.csv', )
+# # 
 
 # 
 # # save_obj(results,output_dir+'supervised_clustering_{}timestep_v3'.format(timestep) )
