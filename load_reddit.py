@@ -5,6 +5,15 @@ Authors: Daniel M. Low
 License: Apache 2.0
 '''
 
+
+
+with open('./../../datum/reddit/input/temp.txt', 'r') as f:
+	lines = f.readlines()
+
+
+
+
+
 import numpy as np
 import pandas as pd
 
@@ -34,11 +43,11 @@ def clean_and_subsample(df, subreddit='addiction', subsample=3000):
 
 
 def multiclass(input_dir, subreddits, pre_or_post = 'pre', subsample=None):
-	reddit_data = pd.read_csv(input_dir +subreddits[0]+'_{}_features.csv'.format(pre_or_post), index_col=False)
+	reddit_data = pd.read_csv(input_dir +subreddits[0]+'_{}_features_tfidf_256.csv'.format(pre_or_post), index_col=False)
 	reddit_data = clean_and_subsample(reddit_data,subreddits[0], subsample=subsample)
 
 	for i in np.arange(1, len(subreddits)):
-		new_data = pd.read_csv(input_dir+subreddits[i]+'_{}_features.csv'.format(pre_or_post))
+		new_data = pd.read_csv(input_dir+subreddits[i]+'_{}_features_tfidf_256.csv'.format(pre_or_post))
 		new_data = clean_and_subsample(new_data,subreddits[i], subsample=subsample)
 		reddit_data = pd.concat([reddit_data, new_data], axis=0)
 

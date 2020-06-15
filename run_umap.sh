@@ -10,7 +10,7 @@
 
 echo "now processing task id:: " ${SLURM_ARRAY_TASK_ID}
 
-python3 reddit_cluster.py --job_array_task_id=${SLURM_ARRAY_TASK_ID} --toy=False --pre_or_post='pre'
+python3 reddit_cluster.py --job_array_task_id=${SLURM_ARRAY_TASK_ID} --plot=True --toy=False --pre_or_post='pre'
 
 echo 'Finished.'
 

@@ -260,8 +260,6 @@ if __name__ == "__main__":
 		                                                          filter_days=['2020/03/11', '2020/04/20'],
 		                                                          subreddit=subreddit)
 
-		print('covid', X_test_covid.shape)
-		print('sr',X_test_sr.shape)
 
 	print('===loaded data====')
 

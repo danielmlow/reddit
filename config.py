@@ -14,7 +14,7 @@ run_version_number = 2 #version
 run_modelN = 0 # 1=SGD,2=RBF,3=Extratrees,4=XGBModel,5=MLP (not 0)
 run_final_model = True
 
-subsample = 3000  # int, float (0.2) or False. 3000 is bipolar after removing duplicates.
+subsample = 2700  # int, float (0.2) or False. 3000 is bipolar after removing duplicates.
 task = 'binary' #'multiclass'
 
 include_subreddits_overN = False #3600 #remove subreddits under this number
@@ -30,7 +30,7 @@ midpandemic_test = True
 subsample_midpandemic_test = 1100
 pre_or_post = 'pre'
 timestep = None
-input_dir = './../../datum/reddit/input/feature_extraction/'
+input_dir = './../../datum/reddit/input/feature_extraction/new/tfidf_combined/'
 output_dir = './../../datum/reddit/output/'
 
 def str2boolean(s):
@@ -100,6 +100,14 @@ if run_version_number in [7]:
 	# subreddits = ['depression', 'anxiety', 'suicidewatch']
 	subsample = 3000  # for alcoholism
 	subsample_midpandemic_test = 1100
+
+if run_version_number in [8]:
+	subreddits = ['addiction', 'EDAnonymous', 'adhd', 'autism', 'alcoholism', 'bipolarreddit', 'bpd','depression', 'anxiety',
+	              'healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
+	# subreddits = ['depression', 'anxiety', 'suicidewatch']
+	subsample = 2700 # for alcoholism
+	subsample_midpandemic_test = 900
+
 
 if toy:
 	subsample = 80
