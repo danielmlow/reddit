@@ -5,15 +5,6 @@ Authors: Daniel M. Low
 License: Apache 2.0
 '''
 
-
-
-with open('./../../datum/reddit/input/temp.txt', 'r') as f:
-	lines = f.readlines()
-
-
-
-
-
 import numpy as np
 import pandas as pd
 

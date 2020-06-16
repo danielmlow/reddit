@@ -30,7 +30,7 @@ midpandemic_test = True
 subsample_midpandemic_test = 1100
 pre_or_post = 'pre'
 timestep = None
-input_dir = './../../datum/reddit/input/feature_extraction/new/tfidf_combined/'
+input_dir = './../../datum/reddit/input/final_features/'
 output_dir = './../../datum/reddit/output/'
 
 def str2boolean(s):
