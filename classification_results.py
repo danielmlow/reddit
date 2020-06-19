@@ -5,12 +5,15 @@ Authors: Daniel M. Low
 License: Apache 2.0
 '''
 
+from subprocess import Popen
+import json
 import pandas as pd
 import numpy as np
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
+
 
 pd.options.display.width = 0
 
@@ -34,7 +37,7 @@ def summarize(input_dir, test_set='', model=0, model_name='SGDClassifier'):
 
 		if model_name in ['SGDClassifier', 'SVC']:
 			coefs = pd.read_csv(input_dir + dir + '/coefs_df_{}{}.csv'.format(model_name, test_set),
-			                    index_col=0).sort_values(subreddit)
+								index_col=0).sort_values(subreddit)
 			# Select only positive
 
 			coefs = coefs[coefs[subreddit]>0]
@@ -108,7 +111,10 @@ def psych_profiler(input_dir, test_set='_covid19', model=0,model_name='SGDClassi
 
 	if plot:
 		plt.figure(figsize=(3,7))
-		sns.heatmap(df.iloc[:,:1], annot=True, linewidths=0.1, cbar=False)
+		hm = sns.heatmap(df.iloc[:,:1], annot=True, linewidths=0.1, cbar=False, square=True)
+		bottom, top = hm.get_ylim()
+		hm.set_ylim(bottom + 0.5, top - 0.5)
+		plt.ylabel('Binary classifier')
 		plt.tight_layout()
 		plt.savefig(output_dir + 'psych_profiler{}.png'.format(test_set), dpi=300)
 
@@ -123,34 +129,49 @@ def psych_profiler(input_dir, test_set='_covid19', model=0,model_name='SGDClassi
 
 if __name__ == "__main__":
 
-
-	# Change path and model used for subsequent analyses
-	input_dir = './../../datum/reddit/output/binary7_all_models/'
-	highest_performing_model = 2
+	# Change path and model used for subsequent analyses. binary8 is where I put all results, 8 means 8th version of dataset
+	version = 8
+	input_dir = f'./../../datum/reddit/output/classification/binary{version}/'
+	# Change path for chosen model (SGD L1 in our case) for subsequent analysis
+	chosen_model = 0
+	input_dir_1model = f'./../../datum/reddit/output/classification/binary{version}_model{chosen_model}/'
+	try: os.mkdir(input_dir_1model)
+	except: pass
+	
 
 	# Run
 	models = range(0,5)
+	# These are how the files are named automatically from run.py
 	model_names = {0:'SGDClassifier',
-	               1:'SGDClassifier',
-	               2: 'SVC',
-	               3: 'ExtraTreesClassifier',
-	               4: 'XGBModel',
-	               }
-
-	model_names_publication= {0:'L1',
-	               1:'EN',
-	               2: 'SVM',
-	               3: 'ET',
-	               4: 'XGB',
-	               }
-
-
+				   1:'SGDClassifier',
+				   2: 'SVC',
+				   3: 'ExtraTreesClassifier',
+				   4: 'XGBModel',
+				   }
+	# How models will apear in table, you can change
+	model_names_publication= {0:'SGD L1',
+				   1:'SGD EN',
+				   2: 'SVM',
+				   3: 'ET',
+				   4: 'XGB',
+				   }
 
 	for model in models:
 		model_name = model_names.get(model)
 		results_pre =  summarize(input_dir, test_set='', model=model, model_name=model_name)
 		# results_mid = summarize(input_dir, test_set='_midpandemic', model=model, model_name=model_name)
 		# results_covid = summarize(input_dir, test_set='_covid19', model=model, model_name=model_name)
+
+
+	# Count proportion of nonzero features
+	total_possible_coefs = 14*346 # 14 binary classifiers, 346 features (256 are tfidf)
+	nonzero_coefs_all = []
+	for model in models[:3]: #last two did not have coefs computed because they're tree ensemble based models
+		nonzero_coefs = pd.read_csv(input_dir+f'summary_model{model}/summary_coefs.csv', index_col=0).shape[0]
+		nonzero_coefs_all.append(np.round(nonzero_coefs/total_possible_coefs,3))
+
+	for model in models[3:]:
+		nonzero_coefs_all.append(1.0)
 
 
 	# Merge all model results
@@ -168,14 +189,31 @@ if __name__ == "__main__":
 		results.columns = ['subreddit', '{}'.format(model_name )]
 		results_all_models = results_all_models.merge(results, on='subreddit')
 
+
+
+	# Mean
 	results_mean = pd.DataFrame(results_all_models.mean()).T
 	results_mean['subreddit'] = 'Mean'
 	cols = results_mean.columns.tolist()
 	cols = cols[-1:] + cols[:-1]
 	results_mean= results_mean[cols]
+	results_mean=results_mean.round(3)
 	results_all_models = results_all_models.append(results_mean, ignore_index=True)
+
+	# Nonzero coefs
+	results_coefs = pd.DataFrame(nonzero_coefs_all).T
+	results_coefs['subreddit'] = 'Features'
+	cols = results_coefs.columns.tolist()
+	cols = cols[-1:] + cols[:-1]
+
+	results_coefs = results_coefs[cols]
+	results_coefs.columns = results_all_models.columns
+	results_all_models = results_all_models.append(results_coefs, ignore_index=True)
+
+	# Format
 	results_all_models.set_index('subreddit', inplace=True)
 	results_all_models = results_all_models.round(3)
+	# Save
 	results_all_models.to_csv(input_dir+'results_all_models.csv')
 	results_all_models_latex= results_all_models.to_latex(index=True)
 	with open(input_dir+ 'results_all_models_latex.txt', 'a+') as f:
@@ -183,13 +221,32 @@ if __name__ == "__main__":
 
 
 
-	# Choose model: 0,1,2,3, or 4
-	input_dir = f'./../../datum/reddit/output/binary7_model{highest_performing_model}/'
-	for model in [highest_performing_model]:
+
+
+	# This will only be done for the chosen model
+	# ==================================================================================================================
+	Popen(str('scp -r ' + input_dir+f'*model{chosen_model}* '+input_dir_1model), shell=True)
+
+	for model in [chosen_model]:
 		model_name = model_names.get(model)
-		results_pre =  summarize(input_dir, test_set='', model=model, model_name=model_name)
-		results_mid = summarize(input_dir, test_set='_midpandemic', model=model, model_name=model_name)
-		results_covid = summarize(input_dir, test_set='_covid19', model=model, model_name=model_name)
+		results_pre =  summarize(input_dir_1model, test_set='', model=model, model_name=model_name)
+		results_mid = summarize(input_dir_1model, test_set='_midpandemic', model=model, model_name=model_name)
+		results_covid = summarize(input_dir_1model, test_set='_covid19', model=model, model_name=model_name)
+
+
+	# Obtain sizes of additional test sets
+	dirs = os.listdir(input_dir_1model)
+	dirs = [n for n in dirs if 'run_final' in n]
+	midpandemic = []
+	covid19 = []
+	for d in dirs:
+		df = pd.read_csv(input_dir_1model+d+'/report_SGDClassifier_midpandemic.csv', index_col=0)
+		midpandemic.append(df.support[-1])
+		df = pd.read_csv(input_dir_1model + d + '/report_SGDClassifier_covid19.csv', index_col=0)
+		covid19.append(df.support[-1])
+
+	print(f'midpandemic: {np.round(np.mean(midpandemic),2)} ({np.round(np.std(midpandemic),2)})')
+	print(f'covid19: {np.round(np.mean(covid19), 2)} ({np.round(np.std(covid19), 5)})')
 
 
 
@@ -219,56 +276,58 @@ if __name__ == "__main__":
 
 
 
-	results.to_csv(input_dir+'summary_model{}/results_pre_vs_mid.csv'.format(model))
+	results.to_csv(input_dir_1model+'summary_model{}/results_pre_vs_mid.csv'.format(model))
 	results_latex = results.to_latex(index=True)
-	with open(input_dir+'summary_model{}/results_pre_vs_mid_latex.txt'.format(model), 'a+') as f:
+	with open(input_dir_1model+'summary_model{}/results_pre_vs_mid_latex.txt'.format(model), 'a+') as f:
 		f.write(results_latex )
 		f.write('\n')
 		f.write('t-test ({}) p-value={}'.format(stat, one_sided_p))
 
 	# Psych profiler
-	psych_profiler(input_dir, test_set='_covid19', model = model,model_name = model_names.get(model), plot=True)
+	psych_profiler(input_dir_1model, test_set='_covid19', model = model,model_name = model_names.get(model), plot=True)
 	# ax1 = sns.heatmap(hmap, cbar=0, cmap="YlGnBu", linewidths=2, ax=ax0, vmax=3000, vmin=0, square=True)
 
 
 
 	# POSITIVE Coef samples
-	coefs = pd.read_csv(input_dir + 'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
+	coefs = pd.read_csv(input_dir_1model + 'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
 	subreddits=np.unique(coefs.subreddit)
 	coefs_top = []
 	for sr in subreddits:
-		coefs_sr = coefs[coefs.subreddit==sr][-14:]
-		feaures_sr =coefs_sr.index
-		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ][::-1]
+		coefs_sr = coefs[coefs.subreddit==sr]
+		coefs_sr = coefs_sr .loc[~coefs_sr .index.duplicated(keep='last')] # TFIDF sometimes created duplicate feature
+		feaures_sr =list(coefs_sr.index)[-14:][::-1]
+		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ]
 		feaures_sr_0 = str(feaures_sr[:7] ).replace('[','').replace(']','').replace("'","")
 		feaures_sr_1 = str(feaures_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
 		coefs_top.append([sr,feaures_sr_0])
 		coefs_top.append(['',feaures_sr_1])
 
-
 	coefs_top = pd.DataFrame(coefs_top)
-	coefs_top.columns = ['Subreddit', 'Top 10 important features - positive coefficients']
-	coefs_top.to_csv(input_dir+'top_10_important_features_positive.csv')
+	coefs_top.columns = ['Subreddit', 'Top 14 important features - positive coefficients']
+	coefs_top.to_csv(input_dir_1model+'top_14_important_features_positive.csv')
 
 
 	# coefs_top_latex= coefs_top.to_latex(index=True,)
-	# with open(input_dir + 'top_10_important_features.tex', 'a+') as f:
+	# with open(input_dir_1model + 'top_10_important_features.tex', 'a+') as f:
 	# 	f.write(coefs_top_latex)
 	# with pd.option_context("max_colwidth", 5000):
 	# 	print(coefs_top_latex)
 
 
 	# NEGATIVE Coef samples
-	coefs = pd.read_csv(input_dir + 'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
+	coefs = pd.read_csv(input_dir_1model + 'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
 
 	subreddits=np.unique(coefs.subreddit)
 	coefs_top = []
-	dirs = os.listdir(input_dir)
+	dirs = os.listdir(input_dir_1model)
 	for sr in subreddits:
 		dir_sr = [n for n in dirs if '_'+sr in n][0]
-		coefs = pd.read_csv(input_dir + dir_sr+f'/coefs_df_{model_name}.csv', index_col='Unnamed: 0')
+		coefs = pd.read_csv(input_dir_1model + dir_sr+f'/coefs_df_{model_name}.csv', index_col='Unnamed: 0')
 
-		coefs_sr = coefs.sort_values(sr)[:14]
+		coefs_sr = coefs.sort_values(sr)
+		coefs_sr = coefs_sr.loc[~coefs_sr.index.duplicated(keep='first')]  # TFIDF sometimes created duplicate feature
+		coefs_sr = coefs_sr[:14]
 		feaures_sr =coefs_sr.index
 		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ]
 		feaures_sr_0 = str(feaures_sr[:7] ).replace('[','').replace(']','').replace("'","")
@@ -277,14 +336,14 @@ if __name__ == "__main__":
 		coefs_top.append(['',feaures_sr_1])
 
 	coefs_top = pd.DataFrame(coefs_top)
-	coefs_top.columns = ['Subreddit', 'Top 10 important features - negative coefficients']
-	coefs_top.to_csv(input_dir+'top_10_important_features_negative.csv')
+	coefs_top.columns = ['Subreddit', 'Top 14 important features - negative coefficients']
+	coefs_top.to_csv(input_dir_1model+'top_14_important_features_negative.csv')
 
 
 	# Max coefficients
 	# ====
 
-	coefs = pd.read_csv(input_dir+'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
+	coefs = pd.read_csv(input_dir_1model+'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
 	features = np.unique(coefs.index)
 	print('n features: ', len(features))
 
@@ -309,13 +368,13 @@ if __name__ == "__main__":
 		max_all.append(df_feature_max)
 
 	max_all = pd.DataFrame(max_all)
-	max_all.to_csv(input_dir+'main_sr_per_feature.csv', index=False)
-
-	import json
+	max_all.to_csv(input_dir_1model+'main_sr_per_feature.csv', index=False)
 
 
 
 
-	with open(input_dir+'main_sr_per_feature.json', 'w') as fp:
+
+
+	with open(input_dir_1model+'main_sr_per_feature.json', 'w') as fp:
 		json.dump(max_d, fp)
 

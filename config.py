@@ -103,7 +103,7 @@ if run_version_number in [7]:
 
 if run_version_number in [8]:
 	subreddits = ['addiction', 'EDAnonymous', 'adhd', 'autism', 'alcoholism', 'bipolarreddit', 'bpd','depression', 'anxiety',
-	              'healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
+	              'ptsd','healthanxiety', 'lonely', 'schizophrenia', 'socialanxiety', 'suicidewatch']
 	# subreddits = ['depression', 'anxiety', 'suicidewatch']
 	subsample = 2700 # for alcoholism
 	subsample_midpandemic_test = 900
