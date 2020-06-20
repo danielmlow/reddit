@@ -104,14 +104,17 @@ def psych_profiler(input_dir, test_set='_covid19', model=0,model_name='SGDClassi
 
 	df.columns = ['subreddit', 'predicted', 'y_pred_probs_sr']
 	df = df.sort_values('predicted')[::-1]
+	df = df.rename(columns={'predicted': 'Predicted from\nCOVID19_support'})
+
 	df.set_index('subreddit', inplace=True)
+
 	# csv
 	df.to_csv(output_dir + 'psych_profiler{}.csv'.format(test_set))
 	# heatmap
 
 	if plot:
 		plt.figure(figsize=(3,7))
-		hm = sns.heatmap(df.iloc[:,:1], annot=True, linewidths=0.1, cbar=False, square=True)
+		hm = sns.heatmap(df.iloc[:,:1], annot=True, linewidths=0.1, cbar=False, square=True, vmin=0, vmax=0.6)
 		bottom, top = hm.get_ylim()
 		hm.set_ylim(bottom + 0.5, top - 0.5)
 		plt.ylabel('Binary classifier')
@@ -164,14 +167,14 @@ if __name__ == "__main__":
 
 
 	# Count proportion of nonzero features
-	total_possible_coefs = 14*346 # 14 binary classifiers, 346 features (256 are tfidf)
+	total_possible_coefs = 15*345 # 14 binary classifiers, 346 features (256 are tfidf)
 	nonzero_coefs_all = []
 	for model in models[:3]: #last two did not have coefs computed because they're tree ensemble based models
 		nonzero_coefs = pd.read_csv(input_dir+f'summary_model{model}/summary_coefs.csv', index_col=0).shape[0]
-		nonzero_coefs_all.append(np.round(nonzero_coefs/total_possible_coefs,3))
+		nonzero_coefs_all.append(f'{nonzero_coefs} ({int(nonzero_coefs/total_possible_coefs*100)})')
 
 	for model in models[3:]:
-		nonzero_coefs_all.append(1.0)
+		nonzero_coefs_all.append(f'{total_possible_coefs} ({100})')
 
 
 	# Merge all model results
@@ -202,7 +205,7 @@ if __name__ == "__main__":
 
 	# Nonzero coefs
 	results_coefs = pd.DataFrame(nonzero_coefs_all).T
-	results_coefs['subreddit'] = 'Features'
+	results_coefs['subreddit'] = 'Model complexity No. (\%)'
 	cols = results_coefs.columns.tolist()
 	cols = cols[-1:] + cols[:-1]
 
@@ -270,22 +273,16 @@ if __name__ == "__main__":
 
 
 
-	stat, p = stats.ttest_ind(results.iloc[:, 0], results.iloc[:, 1])
-	# We hypothesize that accuracy will decrease
-	one_sided_p = p / 2
-
-
-
 	results.to_csv(input_dir_1model+'summary_model{}/results_pre_vs_mid.csv'.format(model))
 	results_latex = results.to_latex(index=True)
 	with open(input_dir_1model+'summary_model{}/results_pre_vs_mid_latex.txt'.format(model), 'a+') as f:
 		f.write(results_latex )
 		f.write('\n')
-		f.write('t-test ({}) p-value={}'.format(stat, one_sided_p))
+
 
 	# Psych profiler
 	psych_profiler(input_dir_1model, test_set='_covid19', model = model,model_name = model_names.get(model), plot=True)
-	# ax1 = sns.heatmap(hmap, cbar=0, cmap="YlGnBu", linewidths=2, ax=ax0, vmax=3000, vmin=0, square=True)
+
 
 
 

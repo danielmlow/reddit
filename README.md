@@ -1,29 +1,48 @@
-# A textual analysis of Reddit mental health support Groups
+# A textual analysis of Reddit mental health support groups
 
 ## 1. Data
-* 2018: Jan-April 2018
-* 2019: Jan-April 2019
-* pre: November 2018 to December 2019
-* post: Jan-April 2020
+ 
 
+4 datasets of posts and text features for the following timeframes from 15 mental health subreddits focused on specific complaints or communities (r/EDAnonymous, r/addiction, r/alcoholism, r/adhd, r/anxiety, r/autism, r/bipolarreddit, r/bpd, r/depression, r/healthanxiety, r/lonely, r/ptsd, r/schizophrenia, r/socialanxiety, and r/suicidewatch), one broad mental health subreddit (r/mentalhealth), and 11 non-mental health subreddits (r/conspiracy, r/divorce, r/fitness, r/guns, r/jokes, r/legaladvice, r/meditation, r/parenting, r/personalfinance, r/relationships, r/teaching).  Downloaded using pushshift API.
 
-## 2. Virtual Environment
+Timeframes and correponding filenames:
 
-All `.ipynb` can run on Google Colab
-Install the `requirements.txt` to run the `.py`
+* 2018 (Jan-April) `_2018_`   
+* 2019 (Jan-April) `_2019_` (r/EDAnonymous appears)
+* 2019 (December 2018 to December 2019) `_pre_` 
+* 2020 (Jan-April) `_post_` r/COVID19_support appears 
+
+Available at Open Science Framework (TODO).
+
+## 2. Reproduce
+
+All `.ipynb` can run on Google Colab for which data should be on Google Drive. 
+
+To run the `.py`, create a virtual environment and install the `requirements.txt`:
 * `conda create --name reddit --file requirements.txt`
 * `conda activate reddit`
 
+## Preprocessing
+* `reddit_data_extraction.ipynb` download data
+* `reddit_feature_extraction.ipynb` feature extraction for classification (TF-IDF was re-done separately on train set), trend analysis, and supervised dimensionality reduction.
+* See below for preprocessing for topic modeling and unsupervised clustering 
 
 ## Analyses
-### Trend Analysis
-* `reddit_descriptive.ipynb`
+##### Classification
+* `config.py` set paths, subreddits to run, and sample size
+* N is the model (0=SGD L1, 1=SGD EN, 2=SVM, 3=ET, 4=XGB)
+* Run remotely: `run_v8_<N>.sh` runs `run.py` on cluster running each binary classifier on different nodes through `--job_array_task_id` set to one of range(0,15) 
+* Run locally (set `--job_array_task_id` and `--run_modelN` accordingly): `python3 run.py --job_array_task_id=0 --run_version_number=8 --run_modelN=0`
+* `classification_results.py`: figure 4-a, summarize results, extract important features, and visualize testing on COVID19_support (psychological profiler), run (change paths accordingly)
 
-### Classification
-* config.py #change paths
-* `run_v8_<N>.sh` # runs `run.py` on cluster running each binary classifier on different nodes. N is the model (0=SGD L1, 1=SGD EN, 2=SVM, 3=ET, 4=XGB) 
-* `run.py` # script to run binary classifiers
-To summarize results, extract important features and test on COVID19_support (psychological profiler), run (change paths accordingly):
-* classification_results.py
+##### Trend Analysis
+* `reddit_descriptive.ipynb`: figures 1 and 2
 
+##### Topic Modeling
+* `reddit_lda_pipeline.ipynb`: figure 3-a and 4-b
 
+##### Unsupervised clustering
+* `Unsupervised_Clustering_Pipeline.ipynb`: figures 3-b and 4-c
+
+##### Supervised dimensionality reduction
+* `reddit_cluster.ipynb`: figure 5
