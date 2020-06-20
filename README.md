@@ -46,3 +46,7 @@ To run the `.py`, create a virtual environment and install the `requirements.txt
 
 ##### Supervised dimensionality reduction
 * `reddit_cluster.ipynb`: figure 5
+* `reddit_cluster.py`: UMAP on 50 random subsamples of 2019 (pre) data to determine sensor precision
+    * run remotely: `run_umap.sh`
+    * run locally (`--job_array_task_id` will run a single subsample): `python3 reddit_cluster.py --job_array_task_id=0 --plot=True --pre_or_post='pre'`
+
