@@ -12,7 +12,6 @@ import numpy as np
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy import stats
 
 
 pd.options.display.width = 0
@@ -41,11 +40,9 @@ def summarize(input_dir, test_set='', model=0, model_name='SGDClassifier'):
 			# Select only positive
 
 			coefs = coefs[coefs[subreddit]>0]
-			# coefs = coefs.round(1)
 			coefs.columns = ['coefficients']
 			coefs['subreddit'] = [subreddit] * coefs.shape[0]
 			coefs_all.append(coefs)
-			# coefs = coefs.reset_index()
 
 
 			with open(output_dir+ 'summary{}.txt'.format(test_set), 'a+') as f:
@@ -167,7 +164,7 @@ if __name__ == "__main__":
 
 
 	# Count proportion of nonzero features
-	total_possible_coefs = 15*345 # 14 binary classifiers, 346 features (256 are tfidf)
+	total_possible_coefs = 15*346 # 14 binary classifiers, 346 features (256 are tfidf)
 	nonzero_coefs_all = []
 	for model in models[:3]: #last two did not have coefs computed because they're tree ensemble based models
 		nonzero_coefs = pd.read_csv(input_dir+f'summary_model{model}/summary_coefs.csv', index_col=0).shape[0]
@@ -228,14 +225,15 @@ if __name__ == "__main__":
 
 	# This will only be done for the chosen model
 	# ==================================================================================================================
+	model = chosen_model
+	model_name = model_names.get(model)
+
+	# copy results for model to different directory to add more results in a more tidy way
 	Popen(str('scp -r ' + input_dir+f'*model{chosen_model}* '+input_dir_1model), shell=True)
 
-	for model in [chosen_model]:
-		model_name = model_names.get(model)
-		results_pre =  summarize(input_dir_1model, test_set='', model=model, model_name=model_name)
-		results_mid = summarize(input_dir_1model, test_set='_midpandemic', model=model, model_name=model_name)
-		results_covid = summarize(input_dir_1model, test_set='_covid19', model=model, model_name=model_name)
-
+	results_pre =  summarize(input_dir_1model, test_set='', model=model, model_name=model_name)
+	results_mid = summarize(input_dir_1model, test_set='_midpandemic', model=model, model_name=model_name)
+	results_covid = summarize(input_dir_1model, test_set='_covid19', model=model, model_name=model_name)
 
 	# Obtain sizes of additional test sets
 	dirs = os.listdir(input_dir_1model)
@@ -250,7 +248,6 @@ if __name__ == "__main__":
 
 	print(f'midpandemic: {np.round(np.mean(midpandemic),2)} ({np.round(np.std(midpandemic),2)})')
 	print(f'covid19: {np.round(np.mean(covid19), 2)} ({np.round(np.std(covid19), 5)})')
-
 
 
 	# show pre vs mid pandemic test results side by side
@@ -287,29 +284,31 @@ if __name__ == "__main__":
 
 
 	# POSITIVE Coef samples
+	n_features = 8 #how many top coefs
+	# These are all coefs for all models stacked.
 	coefs = pd.read_csv(input_dir_1model + 'summary_model{}/summary_coefs.csv'.format(model), index_col='Unnamed: 0')
 	subreddits=np.unique(coefs.subreddit)
 	coefs_top = []
 	for sr in subreddits:
 		coefs_sr = coefs[coefs.subreddit==sr]
 		coefs_sr = coefs_sr .loc[~coefs_sr .index.duplicated(keep='last')] # TFIDF sometimes created duplicate feature
-		feaures_sr =list(coefs_sr.index)[-14:][::-1]
-		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ]
-		feaures_sr_0 = str(feaures_sr[:7] ).replace('[','').replace(']','').replace("'","")
-		feaures_sr_1 = str(feaures_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
-		coefs_top.append([sr,feaures_sr_0])
-		coefs_top.append(['',feaures_sr_1])
+		features_sr =list(coefs_sr.index)[-n_features:][::-1]
+		features_sr = [n.replace('tfidf_','').replace('liwc_', 'LIWC ').replace('n ', 'N ').replace(
+			'sent_neu', 'neutral sentiment').replace('sent_compound', 'compound sentiment').replace(
+			'sent_pos', 'positive sentiment').replace('sent_neg','negative sentiment').replace(
+			'_total', ' lexicon').replace('_', ' ').replace('oN', 'on') for n in features_sr ]
 
-	coefs_top = pd.DataFrame(coefs_top)
-	coefs_top.columns = ['Subreddit', 'Top 14 important features - positive coefficients']
-	coefs_top.to_csv(input_dir_1model+'top_14_important_features_positive.csv')
+		coefs_top.append(['r/'+sr, ', '.join(features_sr)])
+		# split into two rows if using Latex
+		# features_sr_0 = str(features_sr[:7] ).replace('[','').replace(']','').replace("'","")
+		# features_sr_1 = str(features_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
+		# coefs_top.append([sr,features_sr_0])
+		# coefs_top.append(['',features_sr_1])
 
+	coefs_top_pos = pd.DataFrame(coefs_top)
+	coefs_top_pos.columns = ['Subreddit', f'Top {n_features} important features - positive coefficients']
+	coefs_top_pos.to_csv(input_dir_1model+f'top_{n_features}_important_features_positive.csv')
 
-	# coefs_top_latex= coefs_top.to_latex(index=True,)
-	# with open(input_dir_1model + 'top_10_important_features.tex', 'a+') as f:
-	# 	f.write(coefs_top_latex)
-	# with pd.option_context("max_colwidth", 5000):
-	# 	print(coefs_top_latex)
 
 
 	# NEGATIVE Coef samples
@@ -324,17 +323,27 @@ if __name__ == "__main__":
 
 		coefs_sr = coefs.sort_values(sr)
 		coefs_sr = coefs_sr.loc[~coefs_sr.index.duplicated(keep='first')]  # TFIDF sometimes created duplicate feature
-		coefs_sr = coefs_sr[:14]
-		feaures_sr =coefs_sr.index
-		feaures_sr = [n.replace('tfidf_','') for n in feaures_sr ]
-		feaures_sr_0 = str(feaures_sr[:7] ).replace('[','').replace(']','').replace("'","")
-		feaures_sr_1 = str(feaures_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
-		coefs_top.append([sr,feaures_sr_0])
-		coefs_top.append(['',feaures_sr_1])
+		coefs_sr = coefs_sr[:n_features]
+		features_sr =coefs_sr.index
+		features_sr = [n.replace('tfidf_', '').replace('liwc_', 'LIWC ').replace('n ', 'N ').replace(
+			'sent_neu', 'neutral sentiment').replace('sent_compound', 'compound sentiment').replace(
+			'sent_pos', 'positive sentiment').replace('sent_neg', 'negative sentiment').replace(
+			'_total', ' lexicon').replace('_', ' ').replace('oN', 'on') for n in features_sr]
+		coefs_top.append(['r/'+sr, ', '.join(features_sr)])
+		# features_sr_0 = str(features_sr[:7] ).replace('[','').replace(']','').replace("'","")
+		# features_sr_1 = str(features_sr[7:]).replace('[', '').replace(']', '').replace("'", "")
+		# coefs_top.append([sr,features_sr_0])
+		# coefs_top.append(['',features_sr_1])
 
-	coefs_top = pd.DataFrame(coefs_top)
-	coefs_top.columns = ['Subreddit', 'Top 14 important features - negative coefficients']
-	coefs_top.to_csv(input_dir_1model+'top_14_important_features_negative.csv')
+	coefs_top_neg = pd.DataFrame(coefs_top)
+	coefs_top_neg.columns = ['Subreddit', f'Top {n_features} important features - negative coefficients']
+	coefs_top_neg.to_csv(input_dir_1model+f'top_{n_features}_important_features_negative.csv')
+
+	# combined
+	coefs_top = coefs_top_pos.merge(coefs_top_neg)
+	coefs_top.to_csv(input_dir_1model + f'top_{n_features}_important_features_all.csv')
+
+
 
 
 	# Max coefficients

@@ -1,9 +1,23 @@
 # A textual analysis of Reddit mental health support groups
 
 ## 1. Data
- 
 
-4 datasets of posts and text features for the following timeframes from 15 mental health subreddits focused on specific complaints or communities (r/EDAnonymous, r/addiction, r/alcoholism, r/adhd, r/anxiety, r/autism, r/bipolarreddit, r/bpd, r/depression, r/healthanxiety, r/lonely, r/ptsd, r/schizophrenia, r/socialanxiety, and r/suicidewatch), one broad mental health subreddit (r/mentalhealth), and 11 non-mental health subreddits (r/conspiracy, r/divorce, r/fitness, r/guns, r/jokes, r/legaladvice, r/meditation, r/parenting, r/personalfinance, r/relationships, r/teaching).  Downloaded using pushshift API.
+Available at Open Science Framework (TODO): https://osf.io/7peyq/
+
+Posts and text features for the following timeframes from 28 mental health and non-mental health subreddits:
+
+ - 15 specific mental health complaints or communities (r/EDAnonymous, r/addiction,
+   r/alcoholism, r/adhd, r/anxiety, r/autism, r/bipolarreddit, r/bpd,
+   r/depression, r/healthanxiety, r/lonely, r/ptsd, r/schizophrenia,
+   r/socialanxiety, and r/suicidewatch) 
+- 2 broad mental health
+   subreddits (r/mentalhealth, r/COVID19_support) 
+- 11 non-mental health
+   subreddits (r/conspiracy, r/divorce, r/fitness, r/guns, r/jokes,
+   r/legaladvice, r/meditation, r/parenting, r/personalfinance,
+   r/relationships, r/teaching). 
+
+Downloaded using pushshift API. Re-use of this data is subject to Reddit API terms. Cite TODO if using this dataset.
 
 Timeframes and correponding filenames:
 
@@ -12,7 +26,7 @@ Timeframes and correponding filenames:
 * 2019 (December 2018 to December 2019) `_pre_` 
 * 2020 (Jan-April) `_post_` r/COVID19_support appears 
 
-Available at Open Science Framework (TODO).
+
 
 ## 2. Reproduce
 
@@ -49,4 +63,3 @@ To run the `.py`, create a virtual environment and install the `requirements.txt
 * `reddit_cluster.py`: UMAP on 50 random subsamples of 2019 (pre) data to determine sensor precision
     * run remotely: `run_umap.sh`
     * run locally (`--job_array_task_id` will run a single subsample): `python3 reddit_cluster.py --job_array_task_id=0 --plot=True --pre_or_post='pre'`
-
