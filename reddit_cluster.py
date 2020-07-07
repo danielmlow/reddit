@@ -53,7 +53,7 @@ plot=False
 
 timestamp = datetime.today().strftime('%Y-%m-%d-%H-%M')
 # data_folder = '/content/drive/My Drive/ML4HC_Final_Project/data/input/'
-data_folder = './../../datum/reddit/input/final_features/'
+data_folder = './../../datum/reddit/input/reddit_mental_health_dataset/'
 output_dir = f'./../../datum/reddit/output/supervised_umap/umap_cluster_{pre_or_post}_{timestamp}/'
 print(output_dir)
 

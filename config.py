@@ -11,7 +11,7 @@ import argparse
 
 toy = False
 run_version_number = 2 #version
-run_modelN = 0 # 1=SGD,2=RBF,3=Extratrees,4=XGBModel,5=MLP (not 0)
+run_modelN = 0 # (0=SGD L1, 1=SGD EN, 2=SVM, 3=ET, 4=XGB)
 run_final_model = True
 
 subsample = 2700  # int, float (0.2) or False. 3000 is bipolar after removing duplicates.
@@ -30,7 +30,7 @@ midpandemic_test = True
 subsample_midpandemic_test = 1100
 pre_or_post = 'pre'
 timestep = None
-input_dir = './../../datum/reddit/input/final_features/'
+input_dir = './../../datum/reddit/input/reddit_mental_health_dataset/'
 output_dir = './../../datum/reddit/output/'
 
 def str2boolean(s):
