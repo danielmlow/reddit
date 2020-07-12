@@ -91,11 +91,11 @@ python3 -i run.py --job_array_task_id=1 --run_modelN=0 --run_version_number=8
 ##### Trend Analysis
 * `reddit_descriptive.ipynb`: figures 1 and 2
 
-##### Topic Modeling
-* `reddit_lda_pipeline.ipynb`: figure 4 and 5-b
-
 ##### Unsupervised clustering
 * `Unsupervised_Clustering_Pipeline.ipynb`: figures 3 and 5-c
+
+##### Topic Modeling
+* `reddit_lda_pipeline.ipynb`: figure 4 and 5-b
 
 ##### Supervised dimensionality reduction
 * `reddit_cluster.ipynb`: figure 6
