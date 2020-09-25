@@ -2,11 +2,11 @@ Data and code for "Natural language processing reveals vulnerable mental health 
 
 ## 1. Data
 
-Available at Open Science Framework (TODO): https://osf.io/7peyq/
+Available at Open Science Framework: https://osf.io/7peyq/
 
 **Citation:** 
 
-(TODO) Natural language processing reveals vulnerable mental health groups and heightened health anxiety on Reddit during COVID-19. 
+Low, D. M., Rumker, L., Talker, T., Torous, J., Cecchi, G., & Ghosh, S. S. Natural Language Processing Reveals Vulnerable Mental Health Support Groups and Heightened Health Anxiety on Reddit during COVID-19: An Observational Study. *Journal of medical Internet research*. doi: 10.2196/22635
 
 **License:** This dataset is made available under the Public Domain Dedication and License v1.0 whose full text can be found at: http://www.opendatacommons.org/licenses/pddl/1.0/
 It was downloaded using pushshift API. Re-use of this data is subject to Reddit API terms. 
