@@ -196,12 +196,6 @@ def final_pipeline(run_modelN):
 		scaler = MinMaxScaler()
 		clf = SVC(kernel='linear', probability=True)
 
-	#
-	# elif run_modelN == 3:
-	# 	k = 'all'
-	# 	scaler = MinMaxScaler()
-	# 	clf = SVC(kernel='rbf', probability=True)
-
 	elif run_modelN == 3:
 		k = 'all'
 		scaler = MinMaxScaler()

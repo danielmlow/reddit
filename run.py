@@ -17,7 +17,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 import switcher
 import umap
-sys.path.append('./../../catpro')
+# Local scripts
+# Clone catpro from https://github.com/danielmlow/catpro/
+sys.path.append('./../../catpro') #Change dir to cloned dir
 from catpro.preprocessing_text import extract_features
 from catpro import data_helpers
 import config_parameters
