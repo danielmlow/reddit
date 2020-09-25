@@ -78,6 +78,7 @@ To run the `.py` or `.ipynb` on Jupter Notebook, create a virtual environment an
 
 ### 2.2. Analyses
 ##### Classification
+* Clone catpro from https://github.com/danielmlow/catpro/ and change path in run.py sys.path.append('./../../catpro') accordingly
 * `config.py` set paths, subreddits to run, and sample size
 * N is the model (0=SGD L1, 1=SGD EN, 2=SVM, 3=ET, 4=XGB)
 * Run remotely: `run_v8_<N>.sh` runs `run.py` on cluster running each binary classifier on different nodes through `--job_array_task_id` set to one of range(0,15) 
