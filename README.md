@@ -2,11 +2,11 @@ Data and code for "Natural language processing reveals vulnerable mental health 
 
 ## 1. Data
 
-Available at Open Science Framework (TODO): https://osf.io/7peyq/
+Available at Open Science Framework: https://osf.io/7peyq/
 
-**Citation:** 
+**Please cite if you use the data:** 
 
-(TODO) Natural language processing reveals vulnerable mental health groups and heightened health anxiety on Reddit during COVID-19. 
+Low, D. M., Rumker, L., Talker, T., Torous, J., Cecchi, G., & Ghosh, S. S. Natural Language Processing Reveals Vulnerable Mental Health Support Groups and Heightened Health Anxiety on Reddit during COVID-19: An Observational Study. *Journal of medical Internet research*. doi: 10.2196/22635
 
 **License:** This dataset is made available under the Public Domain Dedication and License v1.0 whose full text can be found at: http://www.opendatacommons.org/licenses/pddl/1.0/
 It was downloaded using pushshift API. Re-use of this data is subject to Reddit API terms. 
@@ -78,6 +78,7 @@ To run the `.py` or `.ipynb` on Jupter Notebook, create a virtual environment an
 
 ### 2.2. Analyses
 ##### Classification
+* Clone catpro from https://github.com/danielmlow/catpro/ and change path in run.py sys.path.append('./../../catpro') accordingly
 * `config.py` set paths, subreddits to run, and sample size
 * N is the model (0=SGD L1, 1=SGD EN, 2=SVM, 3=ET, 4=XGB)
 * Run remotely: `run_v8_<N>.sh` runs `run.py` on cluster running each binary classifier on different nodes through `--job_array_task_id` set to one of range(0,15) 
