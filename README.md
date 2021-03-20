@@ -73,7 +73,7 @@ Counting these tokens: `'corona','virus','viral','covid', 'sars','influenza','pa
 * One column `covid19_weighed_words`: total count of words normalized by the amount of words (n_words) in a post (Figure S3).  
 
 
-### 2.3. COVID-19 cases
+### 1.3. COVID-19 cases
 Confirmed COVID-19 cases obtained from ourworldindata.org/covid-cases (source: European CDC).
 
 
