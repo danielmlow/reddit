@@ -4,6 +4,8 @@ Data and code for "Natural language processing reveals vulnerable mental health 
 
 Available at Open Science Framework: https://osf.io/7peyq/
 
+Also available through Zenodo: https://zenodo.org/record/3941387#.YFfi3EhJHL8
+
 **Please cite if you use the data:** 
 
 Low, D. M., Rumker, L., Talker, T., Torous, J., Cecchi, G., & Ghosh, S. S. Natural Language Processing Reveals Vulnerable Mental Health Support Groups and Heightened Health Anxiety on Reddit during COVID-19: An Observational Study. *Journal of medical Internet research*. doi: 10.2196/22635
